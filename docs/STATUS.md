@@ -43,10 +43,13 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
 - **`tests/` and `examples/` intentionally still use the `oscpack::` alias.** They are the
   live verification that the compatibility shim works. **Do not "modernize" them to
   `osctap::`** — doing so silently removes the only coverage of the alias.
-- **The on-disk directory is still `oscpack/`** and includes use `<oscpack/...>` and
-  `osc/...`. The directory/include-path rename to `osctap/` is deliberately deferred to
-  Phase 1 (do it with a redirecting shim so old paths keep working). The *namespace* is
-  renamed; the *layout* intentionally is not.
+  `tests/CompatIncludeShim.cpp` is the dedicated, CI-built guard for both the namespace
+  alias and the include-path shim; **do not migrate it to `<osctap/...>`/`osctap::`.**
+- **The on-disk directory is now `osctap/`** (public prefix `<osctap/...>`). The old
+  `<oscpack/...>` paths still work via a redirect shim tree under `oscpack/` — every header
+  there just `#include`s its `<osctap/...>` counterpart. **Do not delete the `oscpack/`
+  shim tree**; it is the include-path half of the compatibility moat. In-tree headers use
+  quoted relative includes (`"osc/..."`, `"ip/..."`) that resolve via `include_directories(osctap)`.
 - **`-Werror`/`/WX` is intentionally OFF.** Warnings exist (MSVC `size_t`→`uint32_t`
   narrowing, `strcpy`/`gethostbyname` deprecations, a shadow). Decision: clean up the
   warnings first, *then* turn on `-Werror` (ROADMAP Phase 1), so the matrix never goes
@@ -58,9 +61,9 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
 
 ## Recommended Phase 1 starting point
 
-1. **Directory/include-path rename** `oscpack/` → `osctap/`, with a shim header
-   redirecting the old `<oscpack/...>` paths. Pairs naturally with the namespace rename
-   just completed.
+1. ~~**Directory/include-path rename** `oscpack/` → `osctap/`, with a shim redirecting the
+   old `<oscpack/...>` paths.~~ **Done** (redirect shim under `oscpack/`,
+   `tests/CompatIncludeShim.cpp` guards it).
 2. **Warning cleanup → enable `-Werror`/`/WX`** in CI.
 3. **RTSan** (Clang 20+) on annotated hot paths; **TSan** concurrency test for the
    `SocketReceiveMultiplexer` (`Run()` vs `AsynchronousBreak()`).

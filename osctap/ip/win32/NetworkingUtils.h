@@ -34,67 +34,54 @@
   requested that these non-binding requests be included whenever the
   above license is reproduced.
 */
+#include <osctap/ip/NetworkingUtils.h>
 
-/*
-    OscDump prints incoming OSC packets. Unlike the Berkeley dumposc program
-    OscDump uses a different printing format which indicates the type of each
-    message argument.
-*/
+#include <winsock2.h>   // this must come first to prevent errors with MSVC7
+#include <windows.h>
 
-
-#include <iostream>
 #include <cstring>
-#include <cstdlib>
 
-#if defined(__BORLANDC__) // workaround for BCB4 release build intrinsics bug
-namespace std {
-using ::__strcmp__;  // avoid error: E2316 '__strcmp__' is not a member of 'std'.
-}
-#endif
-
-#include <osctap/osc/OscReceivedElements.h>
-#include <osctap/osc/OscPrintReceivedElements.h>
-
-#include <osctap/ip/UdpSocket.h>
-#include <osctap/ip/PacketListener.h>
-using namespace oscpack; // deprecated alias for osctap, intentionally exercised here
-
-class OscDumpPacketListener : public PacketListener{
-public:
-  virtual void ProcessPacket( const char *data, int size,
-      const IpEndpointName& remoteEndpoint )
-  {
-        (void) remoteEndpoint; // suppress unused parameter warning
-
-    std::cout << oscpack::ReceivedPacket( data, size );
-  }
-};
-
-int main(int argc, char* argv[])
+namespace osctap
 {
-  if( argc >= 2 && std::strcmp( argv[1], "-h" ) == 0 ){
-        std::cout << "usage: OscDump [port]\n";
-        return 0;
+class NetworkInitializer
+{
+  public:
+    static const NetworkInitializer& instance()
+    {
+      static const NetworkInitializer ne;
+      return ne;
     }
 
-  int port = 9998;
+  private:
+    NetworkInitializer()
+    {
+      WSAData wsaData;
+      WSAStartup(MAKEWORD(1, 1), &wsaData);
+    }
 
-  if( argc >= 2 )
-    port = std::atoi( argv[1] );
+    ~NetworkInitializer()
+    {
+      WSACleanup();
+    }
+};
 
-  OscDumpPacketListener listener;
-    UdpListeningReceiveSocket s(
-            IpEndpointName( IpEndpointName::ANY_ADDRESS, port ),
-            &listener );
+inline unsigned long GetHostByName( const char *name )
+{
+  NetworkInitializer::instance();
 
-  std::cout << "listening for input on port " << port << "...\n";
-  std::cout << "press ctrl-c to end\n";
+  unsigned long result = 0;
 
-  s.Run();
+  struct hostent *h = gethostbyname( name );
+  if( h ){
+    struct in_addr a;
+    std::memcpy( &a, h->h_addr_list[0], h->h_length );
+    result = ntohl(a.s_addr);
+  }
 
-  std::cout << "finishing.\n";
-
-    return 0;
+  return result;
+}
 }
 
-
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;

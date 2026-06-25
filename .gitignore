@@ -1,1 +1,2 @@
-build/
+# CMake build trees (any variant: build, build20, build-san, build-fuzz, ...)
+build*/

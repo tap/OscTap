@@ -75,12 +75,17 @@ From the review of the current codebase (see git history of this branch):
 - [x] oscpack-compatibility shim verified against existing call sites (tests and
       examples still use `oscpack::` and compile against the alias).
 
-**Phase 0 complete.** Deferred to Phase 1: rename the on-disk `oscpack/` directory and
-`<oscpack/...>` include paths to `osctap/` (with a redirecting shim header for the old
-paths). The C++ namespace is renamed; the directory/include layout intentionally was
-not, to keep this step low-risk and existing `#include` paths working.
+**Phase 0 complete.** The C++ namespace was renamed; the on-disk directory/include
+layout was intentionally left at `oscpack/` to keep that step low-risk. The layout
+rename is the first item of Phase 1, below.
 
 ### Phase 1 — Hardening & modernization
+- [x] **Directory/include-path rename** `oscpack/` → `osctap/`. Public headers now live
+      under `osctap/` and use the `<osctap/...>` prefix; the old `<oscpack/...>` paths are
+      preserved by a redirect shim tree under `oscpack/` (each header forwards to its
+      `<osctap/...>` counterpart). `tests/CompatIncludeShim.cpp` is the CI-built guard for
+      both the include-path shim and the `oscpack::` namespace alias. Deferred: renaming
+      the cosmetic `INCLUDED_OSCPACK_*` include guards.
 - [ ] OSS-Fuzz submission (free continuous fuzzing for OSS).
 - [ ] Replace union type-punning with `std::bit_cast` / `memcpy`; `constexpr` parsing.
 - [ ] Clean up compiler warnings across MSVC/GCC/Clang (size_t→uint32_t narrowing,
