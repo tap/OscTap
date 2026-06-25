@@ -87,7 +87,15 @@ rename is the first item of Phase 1, below.
       both the include-path shim and the `oscpack::` namespace alias. Deferred: renaming
       the cosmetic `INCLUDED_OSCPACK_*` include guards.
 - [ ] OSS-Fuzz submission (free continuous fuzzing for OSS).
-- [ ] Replace union type-punning with `std::bit_cast` / `memcpy`; `constexpr` parsing.
+- [x] Replace union type-punning with `std::bit_cast` / `memcpy`; `constexpr` parsing.
+      `OscUtilities.h` now does all int/float (de)serialization through endian-agnostic
+      big-endian byte assembly (no `#ifdef OSC_HOST_*_ENDIAN`) plus a `BitCast` helper
+      (`std::bit_cast` on C++20, `memcpy` fallback on C++17) — removing the union
+      type-punning and `reinterpret_cast` aliasing UB flagged in audit finding #6, including
+      the outbound stream's `elementSizePtr_` (now a `char*` + byte helpers). The integer
+      load/store helpers are `constexpr` (signed/float too, on C++20); `OscUnitTests.cpp`
+      has `static_assert`s proving it. Verified clean under ASan/UBSan and RTSan, and the
+      RT read accessors stay `[[clang::nonblocking]]` (memcpy is a safe builtin there).
 - [x] Clean up compiler warnings across MSVC/GCC/Clang (size_t→uint32_t narrowing,
       `strcpy`/`gethostbyname`/`ctime` deprecations, shadowing, `(char)0xFF` constant
       truncation), **then** enable `-Werror`/`/WX` in CI via the opt-in

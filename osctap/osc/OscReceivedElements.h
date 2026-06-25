@@ -262,21 +262,7 @@ class ReceivedMessageArgument{
     }
     int32_t AsInt32Unchecked() const OSCTAP_REALTIME
     {
-#ifdef OSC_HOST_LITTLE_ENDIAN
-      union{
-          int32_t i;
-          char c[4];
-      } u;
-
-      u.c[0] = argumentPtr_[3];
-      u.c[1] = argumentPtr_[2];
-      u.c[2] = argumentPtr_[1];
-      u.c[3] = argumentPtr_[0];
-
-      return u.i;
-#else
-      return *(int32_t*)argumentPtr_;
-#endif
+      return ToInt32( argumentPtr_ );
     }
 
     bool IsFloat() const { return *typeTagPtr_ == FLOAT_TYPE_TAG; }
@@ -291,21 +277,7 @@ class ReceivedMessageArgument{
     }
     float AsFloatUnchecked() const OSCTAP_REALTIME
     {
-#ifdef OSC_HOST_LITTLE_ENDIAN
-      union{
-          float f;
-          char c[4];
-      } u;
-
-      u.c[0] = argumentPtr_[3];
-      u.c[1] = argumentPtr_[2];
-      u.c[2] = argumentPtr_[1];
-      u.c[3] = argumentPtr_[0];
-
-      return u.f;
-#else
-      return *(float*)argumentPtr_;
-#endif
+      return BitCast<float>( ToUInt32( argumentPtr_ ) );
     }
 
     bool IsChar() const { return *typeTagPtr_ == CHAR_TYPE_TAG; }
@@ -395,25 +367,7 @@ class ReceivedMessageArgument{
     }
     double AsDoubleUnchecked() const OSCTAP_REALTIME
     {
-#ifdef OSC_HOST_LITTLE_ENDIAN
-      union{
-          double d;
-          char c[8];
-      } u;
-
-      u.c[0] = argumentPtr_[7];
-      u.c[1] = argumentPtr_[6];
-      u.c[2] = argumentPtr_[5];
-      u.c[3] = argumentPtr_[4];
-      u.c[4] = argumentPtr_[3];
-      u.c[5] = argumentPtr_[2];
-      u.c[6] = argumentPtr_[1];
-      u.c[7] = argumentPtr_[0];
-
-      return u.d;
-#else
-      return *(double*)argumentPtr_;
-#endif
+      return BitCast<double>( ToUInt64( argumentPtr_ ) );
     }
 
     bool IsString() const { return *typeTagPtr_ == STRING_TYPE_TAG; }
