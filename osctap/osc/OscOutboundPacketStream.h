@@ -369,23 +369,7 @@ public:
         CheckForAvailableArgumentSpace(4);
 
         *(--typeTagsCurrent_) = FLOAT_TYPE_TAG;
-
-    #ifdef OSC_HOST_LITTLE_ENDIAN
-        union{
-            float f;
-            char c[4];
-        } u;
-
-        u.f = rhs;
-
-        argumentCurrent_[3] = u.c[0];
-        argumentCurrent_[2] = u.c[1];
-        argumentCurrent_[1] = u.c[2];
-        argumentCurrent_[0] = u.c[3];
-    #else
-        *reinterpret_cast<float*>(argumentCurrent_) = rhs;
-    #endif
-
+        FromUInt32( argumentCurrent_, BitCast<uint32_t>(rhs) );
         argumentCurrent_ += 4;
 
         return *this;
@@ -451,27 +435,7 @@ public:
         CheckForAvailableArgumentSpace(8);
 
         *(--typeTagsCurrent_) = DOUBLE_TYPE_TAG;
-
-    #ifdef OSC_HOST_LITTLE_ENDIAN
-        union{
-            double f;
-            char c[8];
-        } u;
-
-        u.f = rhs;
-
-        argumentCurrent_[7] = u.c[0];
-        argumentCurrent_[6] = u.c[1];
-        argumentCurrent_[5] = u.c[2];
-        argumentCurrent_[4] = u.c[3];
-        argumentCurrent_[3] = u.c[4];
-        argumentCurrent_[2] = u.c[5];
-        argumentCurrent_[1] = u.c[6];
-        argumentCurrent_[0] = u.c[7];
-    #else
-        *reinterpret_cast<double*>(argumentCurrent_) = rhs;
-    #endif
-
+        FromUInt64( argumentCurrent_, BitCast<uint64_t>(rhs) );
         argumentCurrent_ += 8;
 
         return *this;
@@ -595,17 +559,19 @@ private:
     {
       if( elementSizePtr_ == 0 ){
 
-        elementSizePtr_ = reinterpret_cast<uint32_t*>(data_);
+        elementSizePtr_ = data_;
 
         return beginPtr;
 
       }else{
         // store an offset to the old element size ptr in the element size slot
         // we store an offset rather than the actual pointer to be 64 bit clean.
-        *reinterpret_cast<uint32_t*>(beginPtr) =
-            (uint32_t)(reinterpret_cast<char*>(elementSizePtr_) - data_);
+        // (this temporary offset is overwritten with the real size in
+        // EndElement; it is written and read back through the same byte order,
+        // so it never appears on the wire.)
+        FromUInt32( beginPtr, (uint32_t)( elementSizePtr_ - data_ ) );
 
-        elementSizePtr_ = reinterpret_cast<uint32_t*>(beginPtr);
+        elementSizePtr_ = beginPtr;
 
         return beginPtr + 4;
       }
@@ -614,7 +580,7 @@ private:
     {
       assert( elementSizePtr_ != 0 );
 
-      if( elementSizePtr_ == reinterpret_cast<uint32_t*>(data_) ){
+      if( elementSizePtr_ == data_ ){
 
         elementSizePtr_ = 0;
 
@@ -622,17 +588,16 @@ private:
         // while building an element, an offset to the containing element's
         // size slot is stored in the elements size slot (or a ptr to data_
         // if there is no containing element). We retrieve that here
-        uint32_t *previousElementSizePtr =
-            reinterpret_cast<uint32_t*>(data_ + *elementSizePtr_);
+        char *previousElementSizePtr = data_ + ToUInt32( elementSizePtr_ );
 
         // then we store the element size in the slot. note that the element
         // size does not include the size slot, hence the - 4 below.
 
-        std::ptrdiff_t d = endPtr - reinterpret_cast<char*>(elementSizePtr_);
+        std::ptrdiff_t d = endPtr - elementSizePtr_;
         // assert( d >= 4 && d <= 0x7FFFFFFF ); // assume packets smaller than 2Gb
 
         uint32_t elementSize = static_cast<uint32_t>(d - 4);
-        FromUInt32( reinterpret_cast<char*>(elementSizePtr_), elementSize );
+        FromUInt32( elementSizePtr_, elementSize );
 
         // finally, we reset the element size ptr to the containing element
         elementSizePtr_ = previousElementSizePtr;
@@ -679,7 +644,7 @@ private:
     // elementSizePtr_ has two special values: 0 indicates that a bundle
     // isn't open, and elementSizePtr_==data_ indicates that a bundle is
     // open but that it doesn't have a size slot (ie the outermost bundle)
-    uint32_t *elementSizePtr_;
+    char *elementSizePtr_;
 
     bool messageIsInProgress_;
 };

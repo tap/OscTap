@@ -68,6 +68,12 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
   (`-fsanitize=realtime`) and statically (`-Wfunction-effects -Werror`).
   `tests/OscRealtimeTest.cpp` is the guard and also runs as a plain functional test on the
   rest of the matrix. Local RTSan needs Clang ≥ 20 (`apt-get install clang-20 libclang-rt-20-dev`).
+- **All int/float (de)serialization goes through `OscUtilities.h`** —
+  `LoadBigEndian*`/`StoreBigEndian*` (endian-agnostic byte assembly) + `BitCast`
+  (`std::bit_cast` on C++20, `memcpy` on C++17). **Do not reintroduce union type-punning,
+  `reinterpret_cast<T*>` over the byte buffer, or `#ifdef OSC_HOST_*_ENDIAN`** — that was
+  the audit-#6 UB, and UBSan guards against it. The byte helpers are `constexpr`; keep the
+  RT read accessors routed through them (`memcpy` is RTSan/function-effects-safe).
 - **Include guards are still named `INCLUDED_OSCPACK_*`** — cosmetic, left as-is.
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with

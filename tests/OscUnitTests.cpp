@@ -49,6 +49,21 @@
 
 #include <vector>
 
+// Compile-time proof that the big-endian integer load path is constexpr
+// ("constexpr parsing"). Uses the oscpack:: alias deliberately (it must keep
+// resolving to osctap::). The signed/float paths are constexpr too, but only
+// when std::bit_cast is available (C++20).
+namespace {
+    constexpr char kBE42[4] = { 0, 0, 0, 42 };
+    static_assert( oscpack::LoadBigEndian32( kBE42 ) == 42u, "constexpr LoadBigEndian32" );
+    static_assert( oscpack::ToUInt32( kBE42 ) == 42u, "constexpr ToUInt32" );
+    static_assert( oscpack::RoundUp4( 5 ) == 8u, "constexpr RoundUp4" );
+#if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
+    static_assert( oscpack::ToInt32( kBE42 ) == 42, "constexpr ToInt32 (bit_cast)" );
+#endif
+}
+
+
 #if defined(__BORLANDC__) // workaround for BCB4 release build intrinsics bug
 namespace std {
 using ::__strcmp__;  // avoid error: E2316 '__strcmp__' is not a member of 'std'.
