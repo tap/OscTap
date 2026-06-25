@@ -42,7 +42,10 @@
 #include <cassert>
 #include <cstring> // memcpy, memmove, strcpy, strlen
 #include <cstddef> // ptrdiff_t
+#ifndef OSCTAP_FREESTANDING
 #include <iostream>
+#include <string> // std::string operator<< overload (hosted convenience)
+#endif
 #include <string_view>
 
 namespace osctap
@@ -52,6 +55,7 @@ namespace osctap
 
 #include "OscTypes.h"
 #include "OscException.h"
+#include "OscConfig.h"   // OSCTAP_THROW, OSCTAP_FREESTANDING
 #include "OscUtilities.h"
 #include "OscHostEndianness.h"
 
@@ -183,7 +187,7 @@ public:
     OutboundPacketStream& operator<<(BundleInitiator rhs )
     {
         if( IsMessageInProgress() )
-            throw MessageInProgressException();
+            OSCTAP_THROW( MessageInProgressException() );
 
         CheckForAvailableBundleSpace();
 
@@ -203,9 +207,9 @@ public:
         (void) rhs;
 
         if( !IsBundleInProgress() )
-            throw BundleNotInProgressException();
+            OSCTAP_THROW( BundleNotInProgressException() );
         if( IsMessageInProgress() )
-            throw MessageInProgressException();
+            OSCTAP_THROW( MessageInProgressException() );
 
         EndElement( messageCursor_ );
 
@@ -216,7 +220,7 @@ public:
     OutboundPacketStream& operator<<(BeginMessage rhs )
     {
         if( IsMessageInProgress() )
-            throw MessageInProgressException();
+            OSCTAP_THROW( MessageInProgressException() );
 
         std::size_t rhsLength = std::strlen(rhs.addressPattern);
         CheckForAvailableMessageSpace( rhsLength );
@@ -245,7 +249,7 @@ public:
     OutboundPacketStream& operator<<(BeginMessageN rhs)
     {
       if( IsMessageInProgress() )
-          throw MessageInProgressException();
+          OSCTAP_THROW( MessageInProgressException() );
 
       CheckForAvailableMessageSpace( rhs.addressPattern.size() );
 
@@ -275,7 +279,7 @@ public:
         (void) rhs;
 
         if( !IsMessageInProgress() )
-            throw MessageNotInProgressException();
+            OSCTAP_THROW( MessageNotInProgressException() );
 
         std::size_t typeTagsCount = end_ - typeTagsCurrent_;
 
@@ -462,12 +466,17 @@ public:
       return *this;
     }
 
+#ifndef OSCTAP_FREESTANDING
+    // Hosted convenience: std::string pulls in <string> (and heap). The
+    // freestanding profile omits it; pass const char*, a char array, or
+    // osctap::string_view instead.
     OutboundPacketStream& operator<<(
         const std::string& rhs)
     {
       operator<<(osctap::string_view(rhs));
       return *this;
     }
+#endif
 
     template<int N>
     OutboundPacketStream& operator<<(
@@ -613,7 +622,7 @@ private:
       std::size_t required = Size() + ((ElementSizeSlotRequired())?4:0) + 16;
 
       if( required > Capacity() )
-        throw OutOfBufferMemoryException();
+        OSCTAP_THROW( OutOfBufferMemoryException() );
     }
     void CheckForAvailableMessageSpace( std::size_t addressPatternSize )
     {
@@ -622,7 +631,7 @@ private:
           + RoundUp4(static_cast<uint32_t>(addressPatternSize + 1)) + 4;
 
       if( required > Capacity() )
-        throw OutOfBufferMemoryException();
+        OSCTAP_THROW( OutOfBufferMemoryException() );
     }
     void CheckForAvailableArgumentSpace( std::size_t argumentLength )
     {
@@ -631,7 +640,7 @@ private:
           + RoundUp4( static_cast<uint32_t>((end_ - typeTagsCurrent_) + 3) );
 
       if( required > Capacity() )
-        throw OutOfBufferMemoryException();
+        OSCTAP_THROW( OutOfBufferMemoryException() );
     }
 
     char * const data_;

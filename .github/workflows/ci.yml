@@ -104,6 +104,38 @@ jobs:
       - name: Run unit + realtime tests under RTSan
         run: ctest --test-dir build-rtsan --output-on-failure
 
+  freestanding:
+    name: Freestanding profile (${{ matrix.cxx }}, -fno-exceptions -fno-rtti)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { cc: gcc,   cxx: g++ }
+          - { cc: clang, cxx: clang++ }
+    steps:
+      - uses: actions/checkout@v4
+
+      # Builds only the embedded-profile smoke test: the parse/serialize core
+      # with C++ exceptions and RTTI disabled and the hosted-only facilities
+      # dropped (-DOSCTAP_FREESTANDING). This is the standing guard that the
+      # core stays buildable for embedded targets (e.g. a Raspberry Pi Pico 2W;
+      # see docs/EMBEDDED_PICO2W.md). The OSCTAP_THROW seam routes validation
+      # failures to a fatal handler when exceptions are off.
+      - name: Configure (freestanding profile)
+        run: >
+          cmake -S . -B build-freestanding -DOSCPACK_BUILD_EXAMPLES=OFF
+          -DOSCTAP_FREESTANDING=ON -DOSCTAP_WARNINGS_AS_ERRORS=ON
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+
+      - name: Build
+        run: cmake --build build-freestanding --target OscFreestandingTest
+
+      - name: Run freestanding smoke test
+        run: ctest --test-dir build-freestanding -R OscFreestandingTest --output-on-failure
+
   tsan:
     name: ThreadSanitizer (receive loop concurrency)
     runs-on: ubuntu-latest
