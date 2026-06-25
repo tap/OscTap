@@ -69,7 +69,7 @@ From the review of the current codebase (see git history of this branch):
 - [x] libFuzzer harness + seed corpus under `fuzz/` (with a standalone g++/ASan
       driver for runtimes without libFuzzer; verified it catches the pre-fix bug).
 - [ ] Rename to `osctap` namespace; keep `oscpack` as a deprecated alias.
-- [ ] GitHub Actions: Linux/macOS/Windows × GCC/Clang/MSVC, C++17 and C++20,
+- [x] GitHub Actions: Linux/macOS/Windows × GCC/Clang/MSVC, C++17 and C++20,
       plus ASan/UBSan and a standalone-fuzzer smoke-test job.
 - [ ] Docs skeleton.
 - [ ] oscpack-compatibility shim verified against existing call sites.

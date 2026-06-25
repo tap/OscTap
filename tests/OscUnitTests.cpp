@@ -66,6 +66,11 @@ void PrintTestSummary()
     std::cout << (passCount_+failCount_) << " tests run, " << passCount_ << " passed, " << failCount_ << " failed.\n";
 }
 
+int FailureCount()
+{
+    return failCount_;
+}
+
 void pass_equality( const char *slhs, const char *srhs, const char *file, int line )
 {
     ++passCount_;
@@ -625,8 +630,9 @@ int main(int argc, char* argv[])
 {
     (void)argc;
     (void)argv;
-    
+
     osc::RunUnitTests();
+    return osc::FailureCount() == 0 ? 0 : 1;
 }
 
 #endif

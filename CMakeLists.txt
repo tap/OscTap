@@ -1,8 +1,12 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.16)
 project(TestOscpack)
-# C++17 floor: the headers use std::string_view (see ROADMAP.md language decision).
-set(CMAKE_CXX_STANDARD 17)
+# C++17 floor (overridable on the command line, e.g. -DCMAKE_CXX_STANDARD=20).
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+enable_testing()
 
 set(OSCPACK_BUILD_EXAMPLES ON CACHE BOOL "Should we build examples")
 
@@ -27,6 +31,7 @@ endif()
 if(OSCPACK_BUILD_EXAMPLES)
   add_executable(OscUnitTests tests/OscUnitTests.cpp)
   target_link_libraries(OscUnitTests oscpack)
+  add_test(NAME OscUnitTests COMMAND OscUnitTests)
 
   #add_executable(OscSendTests tests/OscSendTests.cpp)
   #target_link_libraries(OscSendTests oscpack)
@@ -50,12 +55,12 @@ set(OSCTAP_FUZZER_STANDALONE OFF CACHE BOOL "Build the fuzz target with the stan
 if(OSCTAP_BUILD_FUZZERS OR OSCTAP_FUZZER_STANDALONE)
   if(OSCTAP_FUZZER_STANDALONE)
     add_executable(fuzz_parse fuzz/fuzz_parse.cpp fuzz/standalone_main.cpp)
-    target_compile_options(fuzz_parse PRIVATE -g -O1 -fsanitize=address,undefined)
+    target_compile_options(fuzz_parse PRIVATE -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all)
     target_link_libraries(fuzz_parse oscpack -fsanitize=address,undefined)
   else()
     # real coverage-guided libFuzzer build (Clang only)
     add_executable(fuzz_parse fuzz/fuzz_parse.cpp)
-    target_compile_options(fuzz_parse PRIVATE -g -O1 -fsanitize=fuzzer,address,undefined)
+    target_compile_options(fuzz_parse PRIVATE -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all)
     target_link_libraries(fuzz_parse oscpack -fsanitize=fuzzer,address,undefined)
   endif()
   set_target_properties(fuzz_parse PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
