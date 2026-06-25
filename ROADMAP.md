@@ -39,7 +39,8 @@ to be the obvious library people are pointed to when they ask "is oscpack mainta
 | Layout | Header-only core, dependency-free, freestanding-friendly | realtime-safety + embedded reach |
 | GitHub identity | **Detach fork from `RossBencina/oscpack` network, then rename** to `osctap` | standalone root-repo identity + search visibility, while preserving history, stars, and URL redirects |
 | Plan storage | In-repo docs (this file + HERITAGE.md) **+** GitHub milestones/issues | version-controlled source of truth, decomposed for execution tracking |
-| Benchmarks | Measure **realtime-safety** (zero heap alloc in hot path, bounded worst-case latency), not raw throughput | that's what the audio community actually cares about |
+| Benchmarks / RT-safety | Enforce **realtime-safety** primarily via **RTSan** (`[[clang::nonblocking]]` on hot paths), not hand-rolled allocation benchmarks; measure worst-case latency as a secondary signal | a compiler-checked guarantee beats an eyeballed benchmark; it's what the audio community cares about |
+| Realtime contract | Hot path = parsing/serializing a *known-valid* message (allocation- and exception-free, RTSan-clean). Validation may `throw` and is **not** part of the RT contract — it runs off the realtime thread | `throw` allocates (`__cxa_allocate_exception`); drawing the boundary explicitly is what makes the RT claim honest |
 | Heritage | Preserve Ross Bencina's copyright headers; credit CNMAT, jcelerier/ossia, contributors; seek Ross's blessing | turns "yet another fork" into "sanctioned successor" |
 
 ## Security audit findings (initial Phase 0 work list)
@@ -70,11 +71,26 @@ From the review of the current codebase (see git history of this branch):
 
 ### Phase 1 — Hardening & modernization
 - [ ] OSS-Fuzz submission (free continuous fuzzing for OSS).
-- [ ] Sanitizer CI: ASan / UBSan / TSan.
 - [ ] Replace union type-punning with `std::bit_cast` / `memcpy`; `constexpr` parsing.
-- [ ] Realtime-safety benchmarks: assert zero heap allocation in parse/serialize hot
-      paths; record worst-case latency bounds.
 - [ ] Bounded bundle-nesting depth (configurable).
+- [ ] **RTSan**: annotate the allocation/exception-free hot paths `[[clang::nonblocking]]`;
+      dedicated Clang-20+ CI job (`-fsanitize=realtime`). This is the primary
+      realtime-safety mechanism; record worst-case latency as a secondary benchmark.
+- [ ] **TSan**: write a concurrency test that runs `SocketReceiveMultiplexer::Run()`
+      on one thread and calls `AsynchronousBreak()` from another, then add a TSan CI
+      job over it. (TSan finds nothing against the current single-threaded tests — the
+      test must come first.)
+
+See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
+
+## Sanitizer strategy
+
+| Sanitizer | Scope | Phase | Notes |
+|-----------|-------|-------|-------|
+| ASan + UBSan | full test suite + fuzzer | 0 | passing; the critical-fix commit is clean under it |
+| RTSan | annotated hot paths (`-fsanitize=realtime`) | 1 | **strategic** — turns the RT-safety claim into a compiler-checked guarantee; needs Clang ≥ 20 (Linux/macOS), so a dedicated job. Defines the realtime contract above. |
+| TSan | networking / `SocketReceiveMultiplexer` only | 1 | the parser is single-threaded by design; the only real concurrency is `Run()` vs `Break()`/`AsynchronousBreak()`. Gated on writing a threaded test. |
+| MSan | optional | later | catches uninitialized-memory reads (cf. the past "uninitialized OSC address bytes" fix); high setup friction (instrumented libc++), so not a standing job. |
 
 ### Phase 2 — Reach (only as demand appears)
 - [ ] QEMU aarch64 / armv7 CI.
