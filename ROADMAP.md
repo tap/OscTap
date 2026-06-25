@@ -59,13 +59,18 @@ From the review of the current codebase (see git history of this branch):
 ## Phased plan
 
 ### Phase 0 — Credibility core (current)
-- [ ] Commit ROADMAP.md + HERITAGE.md (this commit).
+- [x] Commit ROADMAP.md + HERITAGE.md.
+- [x] Land audit fix #1 (critical blob OOB read) plus #4 (overflow-safe bundle/blob
+      size checks) and the array-level-underflow guard.
+- [ ] Land remaining security fixes: #2 (`__stop_` remote shutdown) and #5 (bundle
+      nesting recursion bound).
+- [x] Malformed-input test suite (oversized/out-of-range blob, truncated string,
+      unterminated type tags, bad bundle sizes, array under/overflow).
+- [x] libFuzzer harness + seed corpus under `fuzz/` (with a standalone g++/ASan
+      driver for runtimes without libFuzzer; verified it catches the pre-fix bug).
 - [ ] Rename to `osctap` namespace; keep `oscpack` as a deprecated alias.
-- [ ] Land audit fixes (#1 critical first, then #2–#4).
-- [ ] Malformed-input test suite (oversized blob, truncated string, unterminated
-      type tags, bad bundle sizes, deep nesting, array under/overflow).
-- [ ] libFuzzer harness + seed corpus under `fuzz/`.
-- [ ] GitHub Actions: Linux/macOS/Windows × GCC/Clang/MSVC, C++17 and C++20.
+- [ ] GitHub Actions: Linux/macOS/Windows × GCC/Clang/MSVC, C++17 and C++20,
+      plus ASan/UBSan and a standalone-fuzzer smoke-test job.
 - [ ] Docs skeleton.
 - [ ] oscpack-compatibility shim verified against existing call sites.
 
