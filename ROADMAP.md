@@ -106,10 +106,13 @@ rename is the first item of Phase 1, below.
       deliberately left off the contract — it runs off the audio thread.
       Deferred: a non-throwing realtime blob accessor, and recording worst-case latency as
       a secondary benchmark.
-- [ ] **TSan**: write a concurrency test that runs `SocketReceiveMultiplexer::Run()`
-      on one thread and calls `AsynchronousBreak()` from another, then add a TSan CI
-      job over it. (TSan finds nothing against the current single-threaded tests — the
-      test must come first.)
+- [x] **TSan**: `tests/OscConcurrencyTest.cpp` runs `SocketReceiveMultiplexer::Run()` on
+      one thread and stops it via `AsynchronousBreak()` from another (signalling in a loop
+      so it can't race ahead of `Run()`'s break-flag reset), plus a best-effort loopback
+      packet so `ProcessPacket()` runs concurrently. A dedicated GCC TSan CI job
+      (`-DOSCTAP_TSAN=ON`, `-fsanitize=thread`, `halt_on_error=1`) vets it; it also runs as
+      a plain functional test on the POSIX matrix legs. TSan is clean, as expected — the
+      value is the standing guard for the only real concurrency in the library.
 
 See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
 
@@ -119,7 +122,7 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
 |-----------|-------|-------|-------|
 | ASan + UBSan | full test suite + fuzzer | 0 | passing; the critical-fix commit is clean under it |
 | RTSan | annotated read/dispatch hot path (`-fsanitize=realtime` + `-Wfunction-effects`) | 1 | **landed** — read path marked `OSCTAP_REALTIME`; dedicated Clang-20 job enforces it at runtime *and* statically. Turns the RT-safety claim into a compiler-checked guarantee. Defines the realtime contract above. |
-| TSan | networking / `SocketReceiveMultiplexer` only | 1 | the parser is single-threaded by design; the only real concurrency is `Run()` vs `Break()`/`AsynchronousBreak()`. Gated on writing a threaded test. |
+| TSan | networking / `SocketReceiveMultiplexer` only | 1 | **landed** — `OscConcurrencyTest` exercises `Run()` vs `AsynchronousBreak()`; dedicated GCC TSan job. The parser is single-threaded by design, so this is the only real concurrency. Clean, as expected. |
 | MSan | optional | later | catches uninitialized-memory reads (cf. the past "uninitialized OSC address bytes" fix); high setup friction (instrumented libc++), so not a standing job. |
 
 ### Phase 2 — Reach (only as demand appears)

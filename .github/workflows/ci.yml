@@ -103,3 +103,24 @@ jobs:
       # [[clang::nonblocking]] region; RTSan aborts on any realtime-unsafe call.
       - name: Run unit + realtime tests under RTSan
         run: ctest --test-dir build-rtsan --output-on-failure
+
+  tsan:
+    name: ThreadSanitizer (receive loop concurrency)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ThreadSanitizer ships with GCC (libtsan), so no extra runtime install.
+      - name: Configure (TSan)
+        run: cmake -S . -B build-tsan -DOSCPACK_BUILD_EXAMPLES=ON -DOSCTAP_TSAN=ON
+        env:
+          CC: gcc
+          CXX: g++
+
+      - name: Build
+        run: cmake --build build-tsan --target OscConcurrencyTest
+
+      # Run Run() vs AsynchronousBreak() under TSan; halt_on_error makes any data
+      # race fail the job rather than just print a warning.
+      - name: Run concurrency test under TSan
+        run: TSAN_OPTIONS=halt_on_error=1 ctest --test-dir build-tsan -R OscConcurrencyTest --output-on-failure
