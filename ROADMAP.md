@@ -96,9 +96,16 @@ rename is the first item of Phase 1, below.
       match GCC's, and the win32 `GetHostByName` was ported to `getaddrinfo` (mirroring the
       posix backend). Deferred: the uncompiled `ip/*/UdpSocket.h` socket backends still use
       `strcpy`/`gethostbyname` and will be cleaned when they enter the compiled CI surface.
-- [ ] **RTSan**: annotate the allocation/exception-free hot paths `[[clang::nonblocking]]`;
-      dedicated Clang-20+ CI job (`-fsanitize=realtime`). This is the primary
-      realtime-safety mechanism; record worst-case latency as a secondary benchmark.
+- [x] **RTSan**: the read/dispatch hot path (iterating and reading a known-valid message
+      via the throw-free `*Unchecked` accessors) is annotated `OSCTAP_REALTIME`
+      (`noexcept [[clang::nonblocking]]` on Clang ≥ 20). A dedicated Clang-20 CI job builds
+      `tests/OscRealtimeTest.cpp` with `-fsanitize=realtime` (runtime) **and**
+      `-Wfunction-effects -Werror` (static), so the contract is enforced both ways. The
+      validating/throwing surface (message construction/`Init()`, the checked accessors,
+      `AsBoolUnchecked`/`AsBlobUnchecked`, and serialization's overflow check) is
+      deliberately left off the contract — it runs off the audio thread.
+      Deferred: a non-throwing realtime blob accessor, and recording worst-case latency as
+      a secondary benchmark.
 - [ ] **TSan**: write a concurrency test that runs `SocketReceiveMultiplexer::Run()`
       on one thread and calls `AsynchronousBreak()` from another, then add a TSan CI
       job over it. (TSan finds nothing against the current single-threaded tests — the
@@ -111,7 +118,7 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
 | Sanitizer | Scope | Phase | Notes |
 |-----------|-------|-------|-------|
 | ASan + UBSan | full test suite + fuzzer | 0 | passing; the critical-fix commit is clean under it |
-| RTSan | annotated hot paths (`-fsanitize=realtime`) | 1 | **strategic** — turns the RT-safety claim into a compiler-checked guarantee; needs Clang ≥ 20 (Linux/macOS), so a dedicated job. Defines the realtime contract above. |
+| RTSan | annotated read/dispatch hot path (`-fsanitize=realtime` + `-Wfunction-effects`) | 1 | **landed** — read path marked `OSCTAP_REALTIME`; dedicated Clang-20 job enforces it at runtime *and* statically. Turns the RT-safety claim into a compiler-checked guarantee. Defines the realtime contract above. |
 | TSan | networking / `SocketReceiveMultiplexer` only | 1 | the parser is single-threaded by design; the only real concurrency is `Run()` vs `Break()`/`AsynchronousBreak()`. Gated on writing a threaded test. |
 | MSan | optional | later | catches uninitialized-memory reads (cf. the past "uninitialized OSC address bytes" fix); high setup friction (instrumented libc++), so not a standing job. |
 
