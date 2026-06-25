@@ -11,7 +11,7 @@ so out-of-bounds reads surface under AddressSanitizer.
 Requires Clang with the libFuzzer + sanitizer runtimes installed.
 
 ```sh
-clang++ -std=c++17 -g -O1 -I oscpack \
+clang++ -std=c++17 -g -O1 -I osctap \
     -fsanitize=fuzzer,address,undefined \
     fuzz/fuzz_parse.cpp -o fuzz_parse
 ./fuzz_parse fuzz/corpus            # seed corpus bootstraps coverage
@@ -33,12 +33,31 @@ runs a bounded, deterministic random-mutation loop over them. Useful for CI
 smoke tests, crash-repro replay, and sanitizer coverage without libFuzzer.
 
 ```sh
-g++ -std=c++17 -g -O1 -I oscpack -fsanitize=address,undefined \
+g++ -std=c++17 -g -O1 -I osctap -fsanitize=address,undefined \
     fuzz/fuzz_parse.cpp fuzz/standalone_main.cpp -o fuzz_parse_standalone
 ./fuzz_parse_standalone fuzz/corpus/*
 ```
 
 Via CMake: `-DOSCTAP_FUZZER_STANDALONE=ON` (works with g++).
+
+## Continuous fuzzing — ClusterFuzzLite
+
+[ClusterFuzzLite](https://google.github.io/clusterfuzzlite/) runs this harness in
+CI (OSS-Fuzz's in-repo sibling). Config lives in [`../.clusterfuzzlite/`](../.clusterfuzzlite/):
+`Dockerfile` (OSS-Fuzz base-builder image) and `build.sh` (compiles `fuzz_parse.cpp`
+with the environment's `$CXXFLAGS`/`$LIB_FUZZING_ENGINE` and ships the seed corpus).
+Two workflows drive it, each across ASan and UBSan:
+
+- **`.github/workflows/cflite_pr.yml`** — fuzzes the code changed in each PR
+  (`mode: code-change`, 120 s) and fails the check on any new crash.
+- **`.github/workflows/cflite_batch.yml`** — a longer daily campaign
+  (`mode: batch`, 600 s).
+
+These build an OSS-Fuzz Docker image, so they are heavier than the in-tree
+`fuzz-smoke` job in `ci.yml` (which stays as a fast standalone+ASan smoke test).
+Without a configured `storage-repo`, each run starts from the in-repo seed corpus;
+the same `.clusterfuzzlite/` layout is also the basis for an OSS-Fuzz
+`projects/osctap` submission.
 
 ## Corpus and crash repros
 

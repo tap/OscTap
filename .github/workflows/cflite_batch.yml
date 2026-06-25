@@ -1,0 +1,33 @@
+name: ClusterFuzzLite batch fuzzing
+
+# Longer, scheduled fuzzing campaign (deeper than the per-PR code-change runs).
+# Without a configured storage repo the corpus is not persisted between runs, so
+# each campaign starts from the in-repo seed corpus; add `storage-repo` here to
+# accumulate a corpus and de-duplicate crashes over time.
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily, 06:00 UTC
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  Batch:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    steps:
+      - name: Build fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: c++
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run fuzzers (${{ matrix.sanitizer }})
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: batch
+          sanitizer: ${{ matrix.sanitizer }}

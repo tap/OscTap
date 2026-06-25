@@ -86,7 +86,13 @@ rename is the first item of Phase 1, below.
       `<osctap/...>` counterpart). `tests/CompatIncludeShim.cpp` is the CI-built guard for
       both the include-path shim and the `oscpack::` namespace alias. Deferred: renaming
       the cosmetic `INCLUDED_OSCPACK_*` include guards.
-- [ ] OSS-Fuzz submission (free continuous fuzzing for OSS).
+- [x] **ClusterFuzzLite** — in-repo continuous fuzzing (OSS-Fuzz's CI-driven sibling).
+      `.clusterfuzzlite/` (Dockerfile + build.sh over the existing `fuzz/` harness + seed
+      corpus) plus two workflows: per-PR code-change fuzzing (`cflite_pr.yml`) and a daily
+      batch campaign (`cflite_batch.yml`), each across ASan and UBSan. The layout doubles as
+      the basis for an OSS-Fuzz `projects/osctap` integration.
+      Deferred — **OSS-Fuzz submission**: the upstream PR to `google/oss-fuzz` (external) and,
+      optionally, a `storage-repo` so ClusterFuzzLite accumulates a corpus / dedupes crashes.
 - [x] Replace union type-punning with `std::bit_cast` / `memcpy`; `constexpr` parsing.
       `OscUtilities.h` now does all int/float (de)serialization through endian-agnostic
       big-endian byte assembly (no `#ifdef OSC_HOST_*_ENDIAN`) plus a `BitCast` helper
