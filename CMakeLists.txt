@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(TestOscpack)
-set(CMAKE_CXX_STANDARD 14)
+# C++17 floor: the headers use std::string_view (see ROADMAP.md language decision).
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(OSCPACK_BUILD_EXAMPLES ON CACHE BOOL "Should we build examples")
 
