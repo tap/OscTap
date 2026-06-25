@@ -218,7 +218,7 @@ class ReceivedMessageArgument{
 
     friend class ReceivedMessageArgumentIterator;
 
-    char TypeTag() const { return *typeTagPtr_; }
+    char TypeTag() const OSCTAP_REALTIME { return *typeTagPtr_; }
 
     // the unchecked methods below don't check whether the argument actually
     // is of the specified type. they should only be used if you've already
@@ -260,7 +260,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    int32_t AsInt32Unchecked() const
+    int32_t AsInt32Unchecked() const OSCTAP_REALTIME
     {
 #ifdef OSC_HOST_LITTLE_ENDIAN
       union{
@@ -289,7 +289,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    float AsFloatUnchecked() const
+    float AsFloatUnchecked() const OSCTAP_REALTIME
     {
 #ifdef OSC_HOST_LITTLE_ENDIAN
       union{
@@ -318,7 +318,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    char AsCharUnchecked() const
+    char AsCharUnchecked() const OSCTAP_REALTIME
     {
       return (char)ToInt32( argumentPtr_ );
     }
@@ -333,7 +333,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    uint32_t AsRgbaColorUnchecked() const
+    uint32_t AsRgbaColorUnchecked() const OSCTAP_REALTIME
     {
       return ToUInt32( argumentPtr_ );
     }
@@ -348,7 +348,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    uint32_t AsMidiMessageUnchecked() const
+    uint32_t AsMidiMessageUnchecked() const OSCTAP_REALTIME
     {
       return ToUInt32( argumentPtr_ );
     }
@@ -363,7 +363,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    int64_t AsInt64Unchecked() const
+    int64_t AsInt64Unchecked() const OSCTAP_REALTIME
     {
       return ToInt64( argumentPtr_ );
     }
@@ -378,7 +378,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    uint64_t AsTimeTagUnchecked() const
+    uint64_t AsTimeTagUnchecked() const OSCTAP_REALTIME
     {
       return ToUInt64( argumentPtr_ );
     }
@@ -393,7 +393,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    double AsDoubleUnchecked() const
+    double AsDoubleUnchecked() const OSCTAP_REALTIME
     {
 #ifdef OSC_HOST_LITTLE_ENDIAN
       union{
@@ -426,7 +426,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    const char* AsStringUnchecked() const { return argumentPtr_; }
+    const char* AsStringUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
 
     bool IsSymbol() const { return *typeTagPtr_ == SYMBOL_TYPE_TAG; }
     const char* AsSymbol() const
@@ -438,7 +438,7 @@ class ReceivedMessageArgument{
       else
         throw WrongArgumentTypeException();
     }
-    const char* AsSymbolUnchecked() const { return argumentPtr_; }
+    const char* AsSymbolUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
 
     bool IsBlob() const { return *typeTagPtr_ == BLOB_TYPE_TAG; }
     void AsBlob( const void*& data, osc_bundle_element_size_t& size ) const
@@ -509,22 +509,22 @@ class ReceivedMessageArgumentIterator{
     ReceivedMessageArgumentIterator( const char *typeTags, const char *arguments )
       : value_( typeTags, arguments ) {}
 
-    ReceivedMessageArgumentIterator operator++()
+    ReceivedMessageArgumentIterator operator++() OSCTAP_REALTIME
     {
       Advance();
       return *this;
     }
 
-    ReceivedMessageArgumentIterator operator++(int)
+    ReceivedMessageArgumentIterator operator++(int) OSCTAP_REALTIME
     {
       ReceivedMessageArgumentIterator old( *this );
       Advance();
       return old;
     }
 
-    const ReceivedMessageArgument& operator*() const { return value_; }
+    const ReceivedMessageArgument& operator*() const OSCTAP_REALTIME { return value_; }
 
-    const ReceivedMessageArgument* operator->() const { return &value_; }
+    const ReceivedMessageArgument* operator->() const OSCTAP_REALTIME { return &value_; }
 
     friend bool operator==(const ReceivedMessageArgumentIterator& lhs,
                            const ReceivedMessageArgumentIterator& rhs );
@@ -532,7 +532,7 @@ class ReceivedMessageArgumentIterator{
   private:
     ReceivedMessageArgument value_;
 
-    void Advance()
+    void Advance() OSCTAP_REALTIME
     {
       if( !value_.typeTagPtr_ )
         return;
@@ -602,7 +602,7 @@ class ReceivedMessageArgumentIterator{
       }
     }
 
-    bool IsEqualTo( const ReceivedMessageArgumentIterator& rhs ) const
+    bool IsEqualTo( const ReceivedMessageArgumentIterator& rhs ) const OSCTAP_REALTIME
     {
       return value_.typeTagPtr_ == rhs.value_.typeTagPtr_;
     }
@@ -920,7 +920,7 @@ class ReceivedMessage{
     {
       Init( bundleElement.Contents(), bundleElement.Size() );
     }
-    const char *AddressPattern() const { return addressPattern_; }
+    const char *AddressPattern() const OSCTAP_REALTIME { return addressPattern_; }
 
     // Support for non-standard SuperCollider integer address patterns:
     bool AddressPatternIsUInt32() const
@@ -932,19 +932,19 @@ class ReceivedMessage{
       return ToUInt32( addressPattern_ );
     }
 
-    uint32_t ArgumentCount() const { return static_cast<uint32_t>(typeTagsEnd_ - typeTagsBegin_); }
+    uint32_t ArgumentCount() const OSCTAP_REALTIME { return static_cast<uint32_t>(typeTagsEnd_ - typeTagsBegin_); }
 
-    const char *TypeTags() const { return typeTagsBegin_; }
+    const char *TypeTags() const OSCTAP_REALTIME { return typeTagsBegin_; }
 
 
     typedef ReceivedMessageArgumentIterator const_iterator;
 
-    ReceivedMessageArgumentIterator ArgumentsBegin() const
+    ReceivedMessageArgumentIterator ArgumentsBegin() const OSCTAP_REALTIME
     {
       return ReceivedMessageArgumentIterator( typeTagsBegin_, arguments_ );
     }
 
-    ReceivedMessageArgumentIterator ArgumentsEnd() const
+    ReceivedMessageArgumentIterator ArgumentsEnd() const OSCTAP_REALTIME
     {
       return ReceivedMessageArgumentIterator( typeTagsEnd_, 0 );
     }

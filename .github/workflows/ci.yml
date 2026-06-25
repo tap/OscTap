@@ -76,3 +76,30 @@ jobs:
 
       - name: Replay corpus and run mutation loop
         run: ./build-fuzz/fuzz_parse fuzz/corpus/*
+
+  rtsan:
+    name: RTSan + function-effects (realtime hot path)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # RealtimeSanitizer (-fsanitize=realtime) and the function-effect analysis
+      # (-Wfunction-effects, for [[clang::nonblocking]]) require Clang >= 20.
+      - name: Install Clang 20 + RTSan runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-20 libclang-rt-20-dev
+
+      - name: Configure (RTSan + function-effects)
+        run: cmake -S . -B build-rtsan -DOSCPACK_BUILD_EXAMPLES=ON -DOSCTAP_RTSAN=ON
+        env:
+          CC: clang-20
+          CXX: clang++-20
+
+      - name: Build
+        run: cmake --build build-rtsan
+
+      # The realtime test runs its read/dispatch hot path inside a
+      # [[clang::nonblocking]] region; RTSan aborts on any realtime-unsafe call.
+      - name: Run unit + realtime tests under RTSan
+        run: ctest --test-dir build-rtsan --output-on-failure

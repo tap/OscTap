@@ -59,6 +59,15 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
   (approximate them locally with `clang++ -Wshorten-64-to-32 -Wshadow`). The compiled CI
   surface is the gate: the uncompiled `ip/*/UdpSocket.h` backends still use `strcpy`/
   `gethostbyname` and aren't yet covered — clean them when they enter the build.
+- **`OSCTAP_REALTIME` marks the realtime hot path** (`OscTypes.h`). It is
+  `noexcept [[clang::nonblocking]]` on Clang ≥ 20 and a **no-op everywhere else**, so it
+  must stay applied only to genuinely allocation-/throw-free functions — the read/iterate
+  path over a *known-valid* message. **Do not annotate anything that can throw or allocate**
+  (message construction/`Init()`, checked accessors, `AsBoolUnchecked`/`AsBlobUnchecked`,
+  serialization): the Clang-20 RTSan job (`-DOSCTAP_RTSAN=ON`) will fail it both at runtime
+  (`-fsanitize=realtime`) and statically (`-Wfunction-effects -Werror`).
+  `tests/OscRealtimeTest.cpp` is the guard and also runs as a plain functional test on the
+  rest of the matrix. Local RTSan needs Clang ≥ 20 (`apt-get install clang-20 libclang-rt-20-dev`).
 - **Include guards are still named `INCLUDED_OSCPACK_*`** — cosmetic, left as-is.
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with
@@ -71,8 +80,9 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
    `tests/CompatIncludeShim.cpp` guards it).
 2. ~~**Warning cleanup → enable `-Werror`/`/WX`** in CI.~~ **Done**
    (`OSCTAP_WARNINGS_AS_ERRORS` option, on in CI).
-3. **RTSan** (Clang 20+) on annotated hot paths; **TSan** concurrency test for the
-   `SocketReceiveMultiplexer` (`Run()` vs `AsynchronousBreak()`).
+3. ~~**RTSan** (Clang 20+) on annotated hot paths.~~ **Done** (`OSCTAP_REALTIME` on the
+   read path, `OscRealtimeTest` + the `rtsan` CI job). Next: **TSan** concurrency test for
+   the `SocketReceiveMultiplexer` (`Run()` vs `AsynchronousBreak()`).
 
 See `ROADMAP.md` Phase 1 for the complete list, the sanitizer strategy, and rationale.
 

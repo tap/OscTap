@@ -38,6 +38,25 @@
 #define INCLUDED_OSCPACK_OSCTYPES_H
 #include <cstdint>
 
+// OSCTAP_REALTIME marks the allocation- and exception-free realtime hot path
+// (parsing/dispatching a *known-valid* message). It maps to Clang's
+// [[clang::nonblocking]] function-effect attribute, which is enforced two ways:
+//   * statically by -Wfunction-effects (the function must not call anything that
+//     could allocate, lock, or throw), and
+//   * at runtime by RealtimeSanitizer (-fsanitize=realtime), which aborts on any
+//     real-time-unsafe call reached while inside such a function.
+// It is a no-op on toolchains without the attribute (Clang < 20, GCC, MSVC), so
+// it never affects normal builds. Validation that may throw (size checks, type
+// checks, message construction) is deliberately NOT marked realtime: per the
+// realtime contract it runs off the audio thread. See ROADMAP.md.
+// A realtime function must not throw, so the attribute also implies noexcept
+// (Clang enforces this via -Wperf-constraint-implies-noexcept).
+#if defined(__clang__) && (__clang_major__ >= 20)
+  #define OSCTAP_REALTIME noexcept [[clang::nonblocking]]
+#else
+  #define OSCTAP_REALTIME
+#endif
+
 
 namespace osctap{
 

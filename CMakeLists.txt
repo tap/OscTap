@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_testing()
 
 set(OSCPACK_BUILD_EXAMPLES ON CACHE BOOL "Should we build examples")
+set(OSCTAP_RTSAN OFF CACHE BOOL "Build the realtime-safety test under RealtimeSanitizer + function-effect analysis (requires Clang >= 20)")
 
 set(CMAKE_INCLUDE_CURRENT_DIR 1)
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
@@ -44,6 +45,19 @@ if(OSCPACK_BUILD_EXAMPLES)
   add_executable(CompatIncludeShim tests/CompatIncludeShim.cpp)
   target_link_libraries(CompatIncludeShim oscpack)
   add_test(NAME CompatIncludeShim COMMAND CompatIncludeShim)
+
+  # Realtime-safety test. Runs as a plain functional test of the read/dispatch
+  # hot path everywhere (OSCTAP_REALTIME is a no-op off Clang>=20). With
+  # -DOSCTAP_RTSAN=ON (Clang>=20) it additionally enforces the realtime contract:
+  # RealtimeSanitizer at runtime (-fsanitize=realtime) and the function-effect
+  # analysis statically (-Wfunction-effects -Werror). See ROADMAP.md.
+  add_executable(OscRealtimeTest tests/OscRealtimeTest.cpp)
+  target_link_libraries(OscRealtimeTest oscpack)
+  add_test(NAME OscRealtimeTest COMMAND OscRealtimeTest)
+  if(OSCTAP_RTSAN)
+    target_compile_options(OscRealtimeTest PRIVATE -fsanitize=realtime -Wfunction-effects -Werror)
+    target_link_options(OscRealtimeTest PRIVATE -fsanitize=realtime)
+  endif()
 
   #add_executable(OscSendTests tests/OscSendTests.cpp)
   #target_link_libraries(OscSendTests oscpack)
