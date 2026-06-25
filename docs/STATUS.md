@@ -84,6 +84,11 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
   (receipt is not asserted — sandboxed CI may not deliver UDP). It's POSIX-only and built
   under `-fsanitize=thread` via `-DOSCTAP_TSAN=ON` (GCC ships `libtsan`; the distro Clang
   may lack the TSan runtime, so the CI job uses GCC).
+- **ClusterFuzzLite builds the fuzzer via `.clusterfuzzlite/build.sh`, not CMake** —
+  it compiles `fuzz/fuzz_parse.cpp` directly with the OSS-Fuzz toolchain's
+  `$CXXFLAGS`/`$LIB_FUZZING_ENGINE` and `-I osctap`. The `cflite_*` workflows build an
+  OSS-Fuzz Docker image, so they're slower than the rest of CI. Local fuzzing still goes
+  through CMake (`OSCTAP_BUILD_FUZZERS` / `OSCTAP_FUZZER_STANDALONE`).
 
 ## Recommended Phase 1 starting point
 
