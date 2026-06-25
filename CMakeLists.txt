@@ -14,14 +14,19 @@ set(CMAKE_INCLUDE_CURRENT_DIR 1)
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
 if(WIN32)
- set(IpSystemTypePath oscpack/ip/win32)
+ set(IpSystemTypePath osctap/ip/win32)
 else()
- set(IpSystemTypePath oscpack/ip/posix)
+ set(IpSystemTypePath osctap/ip/posix)
 endif()
 
 add_library(oscpack INTERFACE)
 
-include_directories(oscpack)
+# Public headers now live under osctap/ (prefix <osctap/...>); the top-level
+# oscpack/ tree is a thin redirect shim kept for <oscpack/...> compatibility.
+# Adding osctap/ to the search path lets the in-tree quoted "osc/..."/"ip/..."
+# includes resolve, while the repo root (added to the INTERFACE below) keeps
+# both <osctap/...> and the deprecated <oscpack/...> prefixes working.
+include_directories(osctap)
 
 target_include_directories(oscpack INTERFACE .)
 if(WIN32)
@@ -32,6 +37,13 @@ if(OSCPACK_BUILD_EXAMPLES)
   add_executable(OscUnitTests tests/OscUnitTests.cpp)
   target_link_libraries(OscUnitTests oscpack)
   add_test(NAME OscUnitTests COMMAND OscUnitTests)
+
+  # Live coverage for the compatibility shims: this TU deliberately includes via
+  # the deprecated <oscpack/...> paths and uses the oscpack:: namespace alias, so
+  # CI fails if either shim regresses. Do not migrate it to <osctap/...>.
+  add_executable(CompatIncludeShim tests/CompatIncludeShim.cpp)
+  target_link_libraries(CompatIncludeShim oscpack)
+  add_test(NAME CompatIncludeShim COMMAND CompatIncludeShim)
 
   #add_executable(OscSendTests tests/OscSendTests.cpp)
   #target_link_libraries(OscSendTests oscpack)

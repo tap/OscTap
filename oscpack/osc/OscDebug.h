@@ -1,50 +1,11 @@
-#pragma once
-#include "OscReceivedElements.h"
-#include <iostream>
+/*
+    OscTap compatibility shim.
 
-namespace osctap
-{
+    The library directory and public include prefix moved from <oscpack/...>
+    to <osctap/...> (the namespace likewise moved oscpack -> osctap, kept as a
+    deprecated alias). This header redirects the old include path to the new one
+    so existing <oscpack/osc/OscDebug.h> consumers keep compiling unchanged.
 
-template<typename Stream>
-auto& debug(Stream& s, const ReceivedMessage& mess)
-{
-  s << mess.AddressPattern() << " ";
-  for(auto arg : mess)
-  {
-    if(arg.IsString())
-    {
-      s << arg.AsString() << " ";
-    }
-    else if(arg.IsInt32())
-    {
-      s << arg.AsInt32() << " ";
-    }
-    else if(arg.IsFloat())
-    {
-      s << arg.AsFloat() << " ";
-    }
-    else if(arg.IsBool())
-    {
-      s << arg.AsBool() << " ";
-    }
-    else if(arg.IsChar())
-    {
-      s << arg.AsChar() << " ";
-    }
-    else if(arg.IsInt64())
-    {
-      s << arg.AsInt64() << " ";
-    }
-    else if(arg.IsDouble())
-    {
-      s << arg.AsDouble() << " ";
-    }
-  }
-
-  return s;
-}
-}
-
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+    Deprecated: prefer <osctap/osc/OscDebug.h>. See ROADMAP.md / docs/STATUS.md.
+*/
+#include <osctap/osc/OscDebug.h>

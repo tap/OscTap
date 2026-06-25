@@ -1,29 +1,11 @@
-#pragma once
-#include "AbstractUdpSocket.h"
-#include <oscpack/ip/NetworkingUtils.h>
+/*
+    OscTap compatibility shim.
 
-#if defined(_WIN32)
-#include "win32/UdpSocket.h"
-#else
-#include "posix/UdpSocket.h"
-#endif
+    The library directory and public include prefix moved from <oscpack/...>
+    to <osctap/...> (the namespace likewise moved oscpack -> osctap, kept as a
+    deprecated alias). This header redirects the old include path to the new one
+    so existing <oscpack/ip/UdpSocket.h> consumers keep compiling unchanged.
 
-namespace osctap
-{
-namespace detail
-{
-#if defined(_WIN32)
-using Implementation = osctap::win32::Implementation;
-#else
-using Implementation = osctap::posix::Implementation;
-#endif
-}
-
-using UdpTransmitSocket = detail::UdpTransmitSocket<detail::Implementation>;
-using UdpReceiveSocket = detail::UdpReceiveSocket<detail::Implementation>;
-using UdpListeningReceiveSocket = detail::UdpListeningReceiveSocket<detail::Implementation>;
-}
-
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+    Deprecated: prefer <osctap/ip/UdpSocket.h>. See ROADMAP.md / docs/STATUS.md.
+*/
+#include <osctap/ip/UdpSocket.h>

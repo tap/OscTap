@@ -45,9 +45,10 @@ The library itself is header-only; the build targets are the tests and examples.
 
 | Path | Contents |
 |------|----------|
-| `oscpack/osc/` | OSC packet classes (parsing, printing, outbound packing, listeners) |
-| `oscpack/ip/` | UDP networking; `posix/` and `win32/` backends |
-| `tests/` | unit tests (incl. malformed-input regression tests) and send/receive examples |
+| `osctap/osc/` | OSC packet classes (parsing, printing, outbound packing, listeners) |
+| `osctap/ip/` | UDP networking; `posix/` and `win32/` backends |
+| `oscpack/` | redirect shim — old `<oscpack/...>` include paths forwarding to `<osctap/...>` (deprecated compatibility) |
+| `tests/` | unit tests (incl. malformed-input regression tests), the compat-shim guard, and send/receive examples |
 | `examples/` | `OscDump`, `SimpleSend`, `SimpleReceive` |
 | `fuzz/` | libFuzzer harness, corpus, and standalone driver — see [`fuzz/README.md`](fuzz/README.md) |
 
