@@ -58,6 +58,9 @@ using ::__strcpy__;  // avoid error: E2316 '__strcpy__' is not a member of 'std'
 
 namespace osc{
 
+  // NOTE: this deliberately uses the legacy `oscpack` namespace (now a
+  // compatibility alias for `osctap`). Leaving the tests on the alias is the
+  // live verification that the shim works -- do not rename to `osctap`.
   using namespace oscpack;
 
 static int passCount_=0, failCount_=0;
