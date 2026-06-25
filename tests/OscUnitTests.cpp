@@ -37,6 +37,7 @@
 #include "OscUnitTests.h"
 
 #include <cstring>
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
 
@@ -116,8 +117,10 @@ void assertEqual_( const char* lhs, const char* rhs, const char *slhs, const cha
 //---------------------------------------------------------------------------
 char * AllocateAligned4( unsigned long size )
 {
-    char *s = new char[ size + 4 ];   //allocate on stack to get 4 byte alignment
-    return (char*)((long)(s-1) & (~0x03L)) + 4;
+    char *s = new char[ size + 4 ];   // over-allocate so we can round up to a 4-byte boundary
+    // Use uintptr_t, not long: long is 32-bit on Win64 (LLP64), which would
+    // truncate the pointer.
+    return (char*)( ((uintptr_t)(s - 1) & ~(uintptr_t)0x03) + 4 );
 }
 
 // allocate a 4 byte aligned copy of s

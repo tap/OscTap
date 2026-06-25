@@ -63,7 +63,7 @@ class IpEndpointName
     IpEndpointName( const char *addressName, int port_=ANY_PORT )
       : address( GetHostByName( addressName ) )
       , port( port_ ) {}
-    IpEndpointName( uint addressA, uint addressB, uint addressC, uint addressD, int port_=ANY_PORT )
+    IpEndpointName( unsigned int addressA, unsigned int addressB, unsigned int addressC, unsigned int addressD, int port_=ANY_PORT )
       : address( ( (addressA << 24) | (addressB << 16) | (addressC << 8) | addressD ) )
       , port( port_ ) {}
 
