@@ -827,6 +827,8 @@ class ReceivedMessage{
                 break;
 
               case ARRAY_END_TYPE_TAG:
+                if( arrayLevel == 0 )
+                  throw MalformedMessageException( "array close tag ']' without matching open tag '['" );
                 --arrayLevel;
                 // (zero length argument data)
                 break;
@@ -868,13 +870,22 @@ class ReceivedMessage{
               case BLOB_TYPE_TAG:
               {
                 if( argument + oscpack::OSC_SIZEOF_INT32 > end )
-                  MalformedMessageException( "arguments exceed message size" );
+                  throw MalformedMessageException( "arguments exceed message size" );
 
                 // treat blob size as an unsigned int for the purposes of this calculation
                 uint32_t blobSize = ToUInt32( argument );
-                argument = argument + oscpack::OSC_SIZEOF_INT32 + RoundUp4( blobSize );
-                if( argument > end )
-                  MalformedMessageException( "arguments exceed message size" );
+                if( !IsValidElementSizeValue( (osc_bundle_element_size_t)blobSize ) )
+                  throw MalformedMessageException( "invalid blob size" );
+
+                // Compare sizes rather than advancing the pointer first: a huge
+                // blobSize must not be allowed to overflow the pointer (or RoundUp4)
+                // and thereby slip past the bounds check. blobData <= end is
+                // guaranteed by the check above.
+                const char *blobData = argument + oscpack::OSC_SIZEOF_INT32;
+                if( RoundUp4( blobSize ) > (uint32_t)(end - blobData) )
+                  throw MalformedMessageException( "arguments exceed message size" );
+
+                argument = blobData + RoundUp4( blobSize );
               }
                 break;
 
@@ -1028,9 +1039,13 @@ class ReceivedBundle{
         if( (elementSize & ((uint32_t)0x03)) != 0 )
           throw MalformedBundleException( "bundle element size must be multiple of four" );
 
-        p += oscpack::OSC_SIZEOF_INT32 + elementSize;
-        if( p > end_ )
+        // Compare sizes rather than advancing the pointer first, so that a huge
+        // elementSize can't overflow the pointer and slip past the bounds check.
+        const char *elementData = p + oscpack::OSC_SIZEOF_INT32;
+        if( elementSize > (uint32_t)(end_ - elementData) )
           throw MalformedBundleException( "packet too short for bundle element" );
+
+        p = elementData + elementSize;
 
         ++elementCount_;
       }

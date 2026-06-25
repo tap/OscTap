@@ -435,11 +435,125 @@ void test3()
 }
 
 
+//---------------------------------------------------------------------------
+// Regression tests for malformed-packet handling. Several of these crafted
+// packets previously slipped past validation -- most importantly the blob-size
+// bounds check in ReceivedMessage::Init(), which constructed but never threw
+// its MalformedMessageException, allowing an out-of-bounds read. Each packet
+// below must now be rejected with an osc::Exception.
+
+static bool ParsingMessageThrows( const char *data, std::size_t size )
+{
+    char *buffer = NewMessageBuffer( data, size );
+    try{
+        ReceivedMessage m( ReceivedPacket( buffer, size ) );
+        // Walking the arguments should never be reached for these inputs --
+        // validation in Init() should reject them up front -- but iterate
+        // anyway so the test fails loudly rather than reading out of bounds.
+        for( ReceivedMessage::const_iterator i = m.ArgumentsBegin();
+                i != m.ArgumentsEnd(); ++i )
+            (void)i->TypeTag();
+    }catch( const Exception& ){
+        return true;
+    }
+    return false;
+}
+
+static bool ParsingBundleThrows( const char *data, std::size_t size )
+{
+    char *buffer = NewMessageBuffer( data, size );
+    try{
+        ReceivedBundle b( ReceivedPacket( buffer, size ) );
+        (void)b.ElementCount();
+    }catch( const Exception& ){
+        return true;
+    }
+    return false;
+}
+
+void test4()
+{
+    // CRITICAL: a blob whose declared size extends far past the packet.
+    // address "/b", type tags ",b", then a 4-byte blob size of 0x10000000
+    // (256 MB, in-range for IsValidElementSizeValue) with no payload present.
+    {
+        char m[] = { '/','b',0,0,  ',','b',0,0,  0,0,0,0 };
+        m[8] = 0x10; // big-endian 0x10000000 blob size, no data follows
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // a blob size that is out of range (0xFFFFFFFF == negative int32) is rejected
+    {
+        char m[] = { '/','b',0,0,  ',','b',0,0,  0,0,0,0 };
+        m[8] = (char)0xFF; m[9] = (char)0xFF; m[10] = (char)0xFF; m[11] = (char)0xFF;
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // unterminated type tag string (no null terminator before end of packet)
+    {
+        const char m[] = { '/','x',0,0,  ',','i','i','i' };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // fixed-size argument truncated: type tag 'i' but no 4 bytes of data follow
+    {
+        const char m[] = { '/','x',0,0,  ',','i',0,0 };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // array close ']' with no matching open '[' (array-level underflow)
+    {
+        const char m[] = { '/','x',0,0,  ',',']',0,0 };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // unterminated array: '[' with no closing ']'
+    {
+        const char m[] = { '/','x',0,0,  ',','[',0,0 };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // a bundle element whose declared size extends past the packet
+    {
+        char b[] = { '#','b','u','n','d','l','e',0,
+                     0,0,0,0,0,0,0,0,    // time tag
+                     0,0,0,0 };          // element size
+        b[16] = 0x10; // 0x10000000-byte element, no data follows
+        assertEqual( ParsingBundleThrows( b, sizeof(b) ), true );
+    }
+
+    // positive control: a well-formed blob must still parse and round-trip.
+    {
+        char buffer[64];
+        std::memset( buffer, 0, sizeof(buffer) );
+        OutboundPacketStream ps( buffer, sizeof(buffer) );
+        const char payload[] = { 1, 2, 3, 4, 5 };
+        ps << BeginMessage( "/b" ) << Blob( payload, sizeof(payload) ) << oscpack::EndMessage();
+
+        bool ok = true;
+        try{
+            ReceivedMessage m( ReceivedPacket( ps.Data(), ps.Size() ) );
+            ReceivedMessage::const_iterator i = m.ArgumentsBegin();
+            const void *data;
+            osc_bundle_element_size_t size;
+            i->AsBlob( data, size );
+            assertEqual( size, (osc_bundle_element_size_t)sizeof(payload) );
+        }catch( const Exception& ){
+            ok = false;
+        }
+        assertEqual( ok, true );
+    }
+}
+
+//---------------------------------------------------------------------------
+
+
 void RunUnitTests()
 {
     test1();
     test2();
     test3();
+    test4();
     PrintTestSummary();
 }
 
