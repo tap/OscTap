@@ -149,7 +149,7 @@ public:
       if( IsMessageInProgress() ){
         // account for the length of the type tag string. the total type tag
         // includes an initial comma, plus at least one terminating \0
-        result += RoundUp4( (end_ - typeTagsCurrent_) + 2 );
+        result += RoundUp4( static_cast<uint32_t>((end_ - typeTagsCurrent_) + 2) );
       }
 
       return result;
@@ -223,7 +223,9 @@ public:
 
         messageCursor_ = BeginElement( messageCursor_ );
 
-        std::strcpy( messageCursor_, rhs.addressPattern );
+        // memcpy (not strcpy) of the known length incl. terminator: avoids the
+        // MSVC C4996 'unsafe' deprecation and is a bounded copy.
+        std::memcpy( messageCursor_, rhs.addressPattern, rhsLength + 1 );
         messageCursor_ += rhsLength + 1;
 
         // zero pad to 4-byte boundary
@@ -283,7 +285,7 @@ public:
             std::memcpy( tempTypeTags, typeTagsCurrent_, typeTagsCount );
 
             // slot size includes comma and null terminator
-            std::size_t typeTagSlotSize = RoundUp4( typeTagsCount + 2 );
+            std::size_t typeTagSlotSize = RoundUp4( static_cast<uint32_t>(typeTagsCount + 2) );
 
             std::size_t argumentsSize = argumentCurrent_ - messageCursor_;
 
@@ -478,7 +480,7 @@ public:
     OutboundPacketStream& operator<<(
         osctap::string_view rhs)
     {
-      CheckForAvailableArgumentSpace( RoundUp4(rhs.size() + 1) );
+      CheckForAvailableArgumentSpace( RoundUp4(static_cast<uint32_t>(rhs.size() + 1)) );
 
       *(--typeTagsCurrent_) = STRING_TYPE_TAG;
       if(!rhs.empty())
@@ -526,11 +528,13 @@ public:
 
     OutboundPacketStream& operator<<( const Symbol& rhs )
     {
-        CheckForAvailableArgumentSpace( RoundUp4(std::strlen(rhs) + 1) );
+        CheckForAvailableArgumentSpace( RoundUp4(static_cast<uint32_t>(std::strlen(rhs) + 1)) );
 
         *(--typeTagsCurrent_) = SYMBOL_TYPE_TAG;
-        std::strcpy( argumentCurrent_, rhs );
         std::size_t rhsLength = std::strlen(rhs);
+        // memcpy (not strcpy) of the known length incl. terminator: avoids the
+        // MSVC C4996 'unsafe' deprecation and is a bounded copy.
+        std::memcpy( argumentCurrent_, rhs, rhsLength + 1 );
         argumentCurrent_ += rhsLength + 1;
 
         // zero pad to 4-byte boundary
@@ -650,7 +654,7 @@ private:
     {
       // plus 4 for at least four bytes of type tag
       std::size_t required = Size() + ((ElementSizeSlotRequired())?4:0)
-          + RoundUp4(addressPatternSize + 1) + 4;
+          + RoundUp4(static_cast<uint32_t>(addressPatternSize + 1)) + 4;
 
       if( required > Capacity() )
         throw OutOfBufferMemoryException();
@@ -659,7 +663,7 @@ private:
     {
       // plus three for extra type tag, comma and null terminator
       std::size_t required = (argumentCurrent_ - data_) + argumentLength
-          + RoundUp4( (end_ - typeTagsCurrent_) + 3 );
+          + RoundUp4( static_cast<uint32_t>((end_ - typeTagsCurrent_) + 3) );
 
       if( required > Capacity() )
         throw OutOfBufferMemoryException();

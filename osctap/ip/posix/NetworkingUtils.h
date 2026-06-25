@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <cstring>
+#include <cstdint>
 namespace osctap
 {
     // in general NetworkInitializer is only used internally, but if you're
@@ -37,8 +38,8 @@ namespace osctap
       if(ai)
       {
         auto remote = reinterpret_cast<struct sockaddr_in *>(ai->ai_addr);
-        result = remote->sin_addr.s_addr;
-        result = ntohl(result);
+        // s_addr is a 32-bit network-order address; ntohl takes/returns uint32_t.
+        result = ntohl(static_cast<uint32_t>(remote->sin_addr.s_addr));
 
         freeaddrinfo(ai);
       }

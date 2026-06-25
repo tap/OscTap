@@ -136,12 +136,22 @@ inline Ostream_T& operator<<(
                 std::time_t t =
                         (unsigned long)( arg.AsTimeTagUnchecked() >> 32 );
 
+#if defined(_MSC_VER)
+                // std::ctime is deprecated on MSVC (C4996); use the bounded ctime_s.
+                char timeBuf[32];
+                const char *timeString =
+                        ( ctime_s( timeBuf, sizeof(timeBuf), &t ) == 0 ) ? timeBuf : nullptr;
+#else
                 const char *timeString = std::ctime( &t );
-                size_t len = std::strlen( timeString );
+#endif
+                // ctime()/ctime_s() can return null on failure; guard before reading.
+                if( timeString ){
+                    size_t len = std::strlen( timeString );
 
-                // -1 to omit trailing newline from string returned by ctime()
-                if( len > 1 )
-                    os.write( timeString, len - 1 );
+                    // -1 to omit trailing newline from string returned by ctime()
+                    if( len > 1 )
+                        os.write( timeString, len - 1 );
+                }
             }
             break;
 
