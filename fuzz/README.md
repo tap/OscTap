@@ -20,7 +20,7 @@ clang++ -std=c++17 -g -O1 -I oscpack \
 Via CMake:
 
 ```sh
-cmake -B build -DOSCPACK_BUILD_FUZZERS=ON -DCMAKE_CXX_COMPILER=clang++
+cmake -B build -DOSCTAP_BUILD_FUZZERS=ON -DCMAKE_CXX_COMPILER=clang++
 cmake --build build --target fuzz_parse
 ./build/fuzz_parse fuzz/corpus
 ```
@@ -38,7 +38,7 @@ g++ -std=c++17 -g -O1 -I oscpack -fsanitize=address,undefined \
 ./fuzz_parse_standalone fuzz/corpus/*
 ```
 
-Via CMake: `-DOSCPACK_FUZZER_STANDALONE=ON` (works with g++).
+Via CMake: `-DOSCTAP_FUZZER_STANDALONE=ON` (works with g++).
 
 ## Corpus and crash repros
 
