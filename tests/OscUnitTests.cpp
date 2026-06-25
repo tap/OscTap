@@ -43,6 +43,10 @@
 #include "osc/OscReceivedElements.h"
 #include "osc/OscPrintReceivedElements.h"
 #include "osc/OscOutboundPacketStream.h"
+#include "osc/OscPacketListener.h"
+#include "ip/IpEndpointName.h"
+
+#include <vector>
 
 #if defined(__BORLANDC__) // workaround for BCB4 release build intrinsics bug
 namespace std {
@@ -546,6 +550,60 @@ void test4()
 }
 
 //---------------------------------------------------------------------------
+// Regression test for bounded bundle-nesting recursion. A deeply-nested bundle
+// is valid OSC but would otherwise recurse once per level in ProcessBundle(),
+// allowing a single untrusted packet to exhaust the stack.
+
+namespace {
+
+struct CountingListener : public oscpack::OscPacketListener{
+    int messageCount = 0;
+    void ProcessMessage( const oscpack::ReceivedMessage&,
+                         const oscpack::IpEndpointName& ) override
+    { ++messageCount; }
+};
+
+// Emit `depth` nested bundles wrapping a single message.
+void BuildNestedBundle( OutboundPacketStream& ps, int depth )
+{
+    for( int i = 0; i < depth; ++i ) ps << BeginBundle();
+    ps << BeginMessage( "/deep" ) << 1 << oscpack::EndMessage();
+    for( int i = 0; i < depth; ++i ) ps << EndBundle();
+}
+
+} // namespace
+
+void test5()
+{
+    oscpack::IpEndpointName dummy;
+
+    // Shallow nesting: the inner message is delivered as normal.
+    {
+        char buf[1024];
+        std::memset( buf, 0, sizeof(buf) );
+        OutboundPacketStream ps( buf, sizeof(buf) );
+        BuildNestedBundle( ps, 3 );
+        CountingListener listener;
+        listener.ProcessPacket( ps.Data(), (int)ps.Size(), dummy );
+        assertEqual( listener.messageCount, 1 );
+    }
+
+    // Pathologically deep nesting (beyond the default limit): processing must
+    // terminate without exhausting the stack, and the over-deep inner message
+    // is not delivered.
+    {
+        const int depth =
+            (int)oscpack::OscPacketListener::DEFAULT_MAX_BUNDLE_NESTING_DEPTH + 50;
+        std::vector<char> buf( 64 + depth * 24, 0 );
+        OutboundPacketStream ps( buf.data(), buf.size() );
+        BuildNestedBundle( ps, depth );
+        CountingListener listener;
+        listener.ProcessPacket( ps.Data(), (int)ps.Size(), dummy );
+        assertEqual( listener.messageCount, 0 );
+    }
+}
+
+//---------------------------------------------------------------------------
 
 
 void RunUnitTests()
@@ -554,6 +612,7 @@ void RunUnitTests()
     test2();
     test3();
     test4();
+    test5();
     PrintTestSummary();
 }
 

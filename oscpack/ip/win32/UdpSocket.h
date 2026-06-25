@@ -395,12 +395,6 @@ public:
         for( int i = waitResult - WAIT_OBJECT_0; i < (int)socketListeners_.size(); ++i ){
           std::size_t size = socketListeners_[i].second->ReceiveFrom( remoteEndpoint, data, MAX_BUFFER_SIZE );
 
-          if (size == 8 && strcmp(data, "__stop_") == 0)
-          {
-            break_ = true;
-            break;
-          }
-
           if( size > 0 ){
             if (break_)
               break;
