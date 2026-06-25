@@ -10,6 +10,7 @@ enable_testing()
 
 set(OSCPACK_BUILD_EXAMPLES ON CACHE BOOL "Should we build examples")
 set(OSCTAP_RTSAN OFF CACHE BOOL "Build the realtime-safety test under RealtimeSanitizer + function-effect analysis (requires Clang >= 20)")
+set(OSCTAP_TSAN OFF CACHE BOOL "Build the concurrency test under ThreadSanitizer (POSIX; GCC/Clang)")
 
 set(CMAKE_INCLUDE_CURRENT_DIR 1)
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
@@ -57,6 +58,22 @@ if(OSCPACK_BUILD_EXAMPLES)
   if(OSCTAP_RTSAN)
     target_compile_options(OscRealtimeTest PRIVATE -fsanitize=realtime -Wfunction-effects -Werror)
     target_link_options(OscRealtimeTest PRIVATE -fsanitize=realtime)
+  endif()
+
+  # Concurrency test for the receive loop: Run() on one thread vs
+  # AsynchronousBreak() (+ a loopback packet) from another. Runs as a plain
+  # functional test on POSIX; with -DOSCTAP_TSAN=ON it is built under
+  # ThreadSanitizer (the basis for the dedicated TSan CI job). Uses real sockets
+  # + std::thread, so it is gated to non-Windows for now.
+  if(NOT WIN32)
+    find_package(Threads REQUIRED)
+    add_executable(OscConcurrencyTest tests/OscConcurrencyTest.cpp)
+    target_link_libraries(OscConcurrencyTest oscpack Threads::Threads)
+    add_test(NAME OscConcurrencyTest COMMAND OscConcurrencyTest)
+    if(OSCTAP_TSAN)
+      target_compile_options(OscConcurrencyTest PRIVATE -fsanitize=thread -g)
+      target_link_options(OscConcurrencyTest PRIVATE -fsanitize=thread)
+    endif()
   endif()
 
   #add_executable(OscSendTests tests/OscSendTests.cpp)

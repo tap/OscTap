@@ -72,6 +72,12 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with
   `ASAN_OPTIONS=detect_leaks=0`. (Cleaning this up is a fine low-priority task.)
+- **`OscConcurrencyTest` must signal `AsynchronousBreak()` in a loop, not once.**
+  `Run()` resets its break flag at entry, so a single pre-emptive break can be lost and
+  the receive loop would block forever. The loopback packet it sends is **best-effort**
+  (receipt is not asserted — sandboxed CI may not deliver UDP). It's POSIX-only and built
+  under `-fsanitize=thread` via `-DOSCTAP_TSAN=ON` (GCC ships `libtsan`; the distro Clang
+  may lack the TSan runtime, so the CI job uses GCC).
 
 ## Recommended Phase 1 starting point
 
@@ -80,9 +86,10 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
    `tests/CompatIncludeShim.cpp` guards it).
 2. ~~**Warning cleanup → enable `-Werror`/`/WX`** in CI.~~ **Done**
    (`OSCTAP_WARNINGS_AS_ERRORS` option, on in CI).
-3. ~~**RTSan** (Clang 20+) on annotated hot paths.~~ **Done** (`OSCTAP_REALTIME` on the
-   read path, `OscRealtimeTest` + the `rtsan` CI job). Next: **TSan** concurrency test for
-   the `SocketReceiveMultiplexer` (`Run()` vs `AsynchronousBreak()`).
+3. ~~**RTSan** (Clang 20+) on the annotated read hot path.~~ **Done** (`OSCTAP_REALTIME`,
+   `OscRealtimeTest` + the `rtsan` CI job).
+4. ~~**TSan** concurrency test for the `SocketReceiveMultiplexer` (`Run()` vs
+   `AsynchronousBreak()`).~~ **Done** (`OscConcurrencyTest` + the GCC `tsan` CI job).
 
 See `ROADMAP.md` Phase 1 for the complete list, the sanitizer strategy, and rationale.
 
