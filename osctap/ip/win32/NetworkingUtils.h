@@ -37,6 +37,7 @@
 #include <osctap/ip/NetworkingUtils.h>
 
 #include <winsock2.h>   // this must come first to prevent errors with MSVC7
+#include <ws2tcpip.h>   // getaddrinfo / freeaddrinfo
 #include <windows.h>
 
 #include <cstring>
@@ -71,12 +72,21 @@ inline unsigned long GetHostByName( const char *name )
 
   unsigned long result = 0;
 
-  struct hostent *h = gethostbyname( name );
-  if( h ){
-    struct in_addr a;
-    std::memcpy( &a, h->h_addr_list[0], h->h_length );
-    result = ntohl(a.s_addr);
+  // getaddrinfo replaces the deprecated gethostbyname (MSVC C4996); mirrors the
+  // posix backend.
+  struct addrinfo hints;
+  std::memset( &hints, 0, sizeof(hints) );
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_protocol = IPPROTO_UDP;
+
+  struct addrinfo *ai = nullptr;
+  if( getaddrinfo( name, nullptr, &hints, &ai ) == 0 && ai ){
+    auto *remote = reinterpret_cast<struct sockaddr_in *>( ai->ai_addr );
+    result = ntohl( remote->sin_addr.s_addr );
   }
+  if( ai )
+    freeaddrinfo( ai );
 
   return result;
 }

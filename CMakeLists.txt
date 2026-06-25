@@ -78,8 +78,19 @@ if(OSCTAP_BUILD_FUZZERS OR OSCTAP_FUZZER_STANDALONE)
   set_target_properties(fuzz_parse PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 endif()
 
+# Warnings-as-errors is opt-in (default OFF) so that consumers building against
+# the INTERFACE library are never forced to fail on our warning bar; CI turns it
+# on (-DOSCTAP_WARNINGS_AS_ERRORS=ON) to keep the tree clean.
+set(OSCTAP_WARNINGS_AS_ERRORS OFF CACHE BOOL "Treat compiler warnings as errors (used in CI)")
+
 if(MSVC)
   target_compile_options(oscpack INTERFACE /W4)
-elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+  if(OSCTAP_WARNINGS_AS_ERRORS)
+    target_compile_options(oscpack INTERFACE /WX)
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(oscpack INTERFACE -Wall -Wextra -Wno-long-long -pedantic)
+  if(OSCTAP_WARNINGS_AS_ERRORS)
+    target_compile_options(oscpack INTERFACE -Werror)
+  endif()
 endif()

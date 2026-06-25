@@ -88,9 +88,14 @@ rename is the first item of Phase 1, below.
       the cosmetic `INCLUDED_OSCPACK_*` include guards.
 - [ ] OSS-Fuzz submission (free continuous fuzzing for OSS).
 - [ ] Replace union type-punning with `std::bit_cast` / `memcpy`; `constexpr` parsing.
-- [ ] Clean up compiler warnings across MSVC/GCC/Clang (size_t→uint32_t narrowing,
-      `strcpy`/`gethostbyname` deprecations, shadowing), **then** enable `-Werror`/`/WX`
-      in CI. (Decision: clean up first so the matrix stays green when the bar is raised.)
+- [x] Clean up compiler warnings across MSVC/GCC/Clang (size_t→uint32_t narrowing,
+      `strcpy`/`gethostbyname`/`ctime` deprecations, shadowing, `(char)0xFF` constant
+      truncation), **then** enable `-Werror`/`/WX` in CI via the opt-in
+      `OSCTAP_WARNINGS_AS_ERRORS` option (default OFF so downstream consumers of the
+      INTERFACE library are not forced onto our warning bar). The Clang warning flags now
+      match GCC's, and the win32 `GetHostByName` was ported to `getaddrinfo` (mirroring the
+      posix backend). Deferred: the uncompiled `ip/*/UdpSocket.h` socket backends still use
+      `strcpy`/`gethostbyname` and will be cleaned when they enter the compiled CI surface.
 - [ ] **RTSan**: annotate the allocation/exception-free hot paths `[[clang::nonblocking]]`;
       dedicated Clang-20+ CI job (`-fsanitize=realtime`). This is the primary
       realtime-safety mechanism; record worst-case latency as a secondary benchmark.

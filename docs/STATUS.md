@@ -50,10 +50,15 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
   there just `#include`s its `<osctap/...>` counterpart. **Do not delete the `oscpack/`
   shim tree**; it is the include-path half of the compatibility moat. In-tree headers use
   quoted relative includes (`"osc/..."`, `"ip/..."`) that resolve via `include_directories(osctap)`.
-- **`-Werror`/`/WX` is intentionally OFF.** Warnings exist (MSVC `size_t`→`uint32_t`
-  narrowing, `strcpy`/`gethostbyname` deprecations, a shadow). Decision: clean up the
-  warnings first, *then* turn on `-Werror` (ROADMAP Phase 1), so the matrix never goes
-  red just from raising the bar.
+- **`-Werror`/`/WX` is now ON in CI** via the `OSCTAP_WARNINGS_AS_ERRORS` CMake option
+  (default **OFF** so downstream consumers of the INTERFACE library are never forced onto
+  our warning bar; `ci.yml` passes `-DOSCTAP_WARNINGS_AS_ERRORS=ON`). The MSVC `/W4` set
+  that this cleared — `size_t`→`uint32_t` narrowing, `strcpy`/`gethostbyname`/`ctime`
+  deprecations, a shadow, and `(char)0xFF` constant truncation — was read straight from the
+  Windows CI logs, since those warnings don't appear under GCC/Clang `-Wall -Wextra`
+  (approximate them locally with `clang++ -Wshorten-64-to-32 -Wshadow`). The compiled CI
+  surface is the gate: the uncompiled `ip/*/UdpSocket.h` backends still use `strcpy`/
+  `gethostbyname` and aren't yet covered — clean them when they enter the build.
 - **Include guards are still named `INCLUDED_OSCPACK_*`** — cosmetic, left as-is.
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with
@@ -64,7 +69,8 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
 1. ~~**Directory/include-path rename** `oscpack/` → `osctap/`, with a shim redirecting the
    old `<oscpack/...>` paths.~~ **Done** (redirect shim under `oscpack/`,
    `tests/CompatIncludeShim.cpp` guards it).
-2. **Warning cleanup → enable `-Werror`/`/WX`** in CI.
+2. ~~**Warning cleanup → enable `-Werror`/`/WX`** in CI.~~ **Done**
+   (`OSCTAP_WARNINGS_AS_ERRORS` option, on in CI).
 3. **RTSan** (Clang 20+) on annotated hot paths; **TSan** concurrency test for the
    `SocketReceiveMultiplexer` (`Run()` vs `AsynchronousBreak()`).
 

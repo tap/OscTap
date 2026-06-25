@@ -118,7 +118,7 @@ void assertEqual_( const char* lhs, const char* rhs, const char *slhs, const cha
 #define assertEqual( a, b ) assertEqual_( (a), (b), #a, #b, __FILE__, __LINE__ )
 
 //---------------------------------------------------------------------------
-char * AllocateAligned4( unsigned long size )
+char * AllocateAligned4( std::size_t size )
 {
     char *s = new char[ size + 4 ];   // over-allocate so we can round up to a 4-byte boundary
     // Use uintptr_t, not long: long is 32-bit on Win64 (LLP64), which would
@@ -127,7 +127,7 @@ char * AllocateAligned4( unsigned long size )
 }
 
 // allocate a 4 byte aligned copy of s
-char * NewMessageBuffer( const char *s, unsigned long length )
+char * NewMessageBuffer( const char *s, std::size_t length )
 {
     char *p = AllocateAligned4( length );
     std::memcpy( p, s, length );
@@ -164,8 +164,8 @@ void test1()
         i = m.ArgumentsBegin();
         bool exceptionThrown = false;
         try{
-            int n = (i++)->AsInt32();
-            (void)n;
+            int n2 = (i++)->AsInt32();
+            (void)n2;
         }catch( Exception& ){
             exceptionThrown = true;
         }
@@ -500,7 +500,7 @@ void test4()
     // a blob size that is out of range (0xFFFFFFFF == negative int32) is rejected
     {
         char m[] = { '/','b',0,0,  ',','b',0,0,  0,0,0,0 };
-        m[8] = (char)0xFF; m[9] = (char)0xFF; m[10] = (char)0xFF; m[11] = (char)0xFF;
+        m[8] = '\xFF'; m[9] = '\xFF'; m[10] = '\xFF'; m[11] = '\xFF';
         assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
     }
 
