@@ -77,7 +77,9 @@ From the review of the current codebase (see git history of this branch):
 ### Phase 1 — Hardening & modernization
 - [ ] OSS-Fuzz submission (free continuous fuzzing for OSS).
 - [ ] Replace union type-punning with `std::bit_cast` / `memcpy`; `constexpr` parsing.
-- [ ] Bounded bundle-nesting depth (configurable).
+- [ ] Clean up compiler warnings across MSVC/GCC/Clang (size_t→uint32_t narrowing,
+      `strcpy`/`gethostbyname` deprecations, shadowing), **then** enable `-Werror`/`/WX`
+      in CI. (Decision: clean up first so the matrix stays green when the bar is raised.)
 - [ ] **RTSan**: annotate the allocation/exception-free hot paths `[[clang::nonblocking]]`;
       dedicated Clang-20+ CI job (`-fsanitize=realtime`). This is the primary
       realtime-safety mechanism; record worst-case latency as a secondary benchmark.
