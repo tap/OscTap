@@ -47,7 +47,7 @@
 #include <cstddef> // ptrdiff_t
 
 
-namespace oscpack{
+namespace osctap{
 
 class MalformedPacketException : public Exception{
   public:
@@ -153,7 +153,7 @@ class ReceivedBundleElement{
     {
       return ToInt32( sizePtr_ );
     }
-    const char *Contents() const { return sizePtr_ + oscpack::OSC_SIZEOF_INT32; }
+    const char *Contents() const { return sizePtr_ + osctap::OSC_SIZEOF_INT32; }
 
   private:
     const char *sizePtr_;
@@ -458,7 +458,7 @@ class ReceivedMessageArgument{
         throw MalformedMessageException("invalid blob size");
 
       size = sizeResult;
-      data = (void*)(argumentPtr_+ oscpack::OSC_SIZEOF_INT32);
+      data = (void*)(argumentPtr_+ osctap::OSC_SIZEOF_INT32);
     }
 
     bool IsArrayBegin() const { return *typeTagPtr_ == ARRAY_BEGIN_TYPE_TAG; }
@@ -581,7 +581,7 @@ class ReceivedMessageArgumentIterator{
         {
           // treat blob size as an unsigned int for the purposes of this calculation
           uint32_t blobSize = ToUInt32( value_.argumentPtr_ );
-          value_.argumentPtr_ = value_.argumentPtr_ + oscpack::OSC_SIZEOF_INT32 + RoundUp4( blobSize );
+          value_.argumentPtr_ = value_.argumentPtr_ + osctap::OSC_SIZEOF_INT32 + RoundUp4( blobSize );
         }
           break;
 
@@ -869,7 +869,7 @@ class ReceivedMessage{
 
               case BLOB_TYPE_TAG:
               {
-                if( argument + oscpack::OSC_SIZEOF_INT32 > end )
+                if( argument + osctap::OSC_SIZEOF_INT32 > end )
                   throw MalformedMessageException( "arguments exceed message size" );
 
                 // treat blob size as an unsigned int for the purposes of this calculation
@@ -881,7 +881,7 @@ class ReceivedMessage{
                 // blobSize must not be allowed to overflow the pointer (or RoundUp4)
                 // and thereby slip past the bounds check. blobData <= end is
                 // guaranteed by the check above.
-                const char *blobData = argument + oscpack::OSC_SIZEOF_INT32;
+                const char *blobData = argument + osctap::OSC_SIZEOF_INT32;
                 if( RoundUp4( blobSize ) > (uint32_t)(end - blobData) )
                   throw MalformedMessageException( "arguments exceed message size" );
 
@@ -1031,7 +1031,7 @@ class ReceivedBundle{
       const char *p = timeTag_ + 8;
 
       while( p < end_ ){
-        if( p + oscpack::OSC_SIZEOF_INT32 > end_ )
+        if( p + osctap::OSC_SIZEOF_INT32 > end_ )
           throw MalformedBundleException( "packet too short for elementSize" );
 
         // treat element size as an unsigned int for the purposes of this calculation
@@ -1041,7 +1041,7 @@ class ReceivedBundle{
 
         // Compare sizes rather than advancing the pointer first, so that a huge
         // elementSize can't overflow the pointer and slip past the bounds check.
-        const char *elementData = p + oscpack::OSC_SIZEOF_INT32;
+        const char *elementData = p + osctap::OSC_SIZEOF_INT32;
         if( elementSize > (uint32_t)(end_ - elementData) )
           throw MalformedBundleException( "packet too short for bundle element" );
 
@@ -1091,17 +1091,22 @@ class ReceivedBundle{
 };
 
 
-inline auto begin(const oscpack::ReceivedMessage& mes)
+inline auto begin(const osctap::ReceivedMessage& mes)
 {
   return mes.ArgumentsBegin();
 }
 
-inline auto end(const oscpack::ReceivedMessage& mes)
+inline auto end(const osctap::ReceivedMessage& mes)
 {
   return mes.ArgumentsEnd();
 }
 
-} // namespace osc
+} // namespace osctap
 
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_OSCRECEIVEDELEMENTS_H */

@@ -41,13 +41,13 @@
 
 #include "NetworkingUtils.h"
 
-namespace oscpack
+namespace osctap
 {
 class IpEndpointName
 {
     static unsigned long GetHostByName( const char *s )
     {
-      return oscpack::GetHostByName(s);
+      return osctap::GetHostByName(s);
     }
 
   public:
@@ -127,4 +127,9 @@ inline bool operator!=( const IpEndpointName& lhs, const IpEndpointName& rhs )
   return !(lhs == rhs);
 }
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
+
 #endif /* INCLUDED_OSCPACK_IPENDPOINTNAME_H */

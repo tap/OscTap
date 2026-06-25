@@ -43,7 +43,7 @@
 #include "IpEndpointName.h"
 
 
-namespace oscpack
+namespace osctap
 {
 class PacketListener;
 class TimerListener;
@@ -234,5 +234,10 @@ class UdpListeningReceiveSocket : public UdpSocket<Impl_T>{
 
 
 }
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_UDPSOCKET_H */

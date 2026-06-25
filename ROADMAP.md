@@ -62,17 +62,23 @@ From the review of the current codebase (see git history of this branch):
 - [x] Commit ROADMAP.md + HERITAGE.md.
 - [x] Land audit fix #1 (critical blob OOB read) plus #4 (overflow-safe bundle/blob
       size checks) and the array-level-underflow guard.
-- [ ] Land remaining security fixes: #2 (`__stop_` remote shutdown) and #5 (bundle
+- [x] Land remaining security fixes: #2 (`__stop_` remote shutdown) and #5 (bundle
       nesting recursion bound).
 - [x] Malformed-input test suite (oversized/out-of-range blob, truncated string,
       unterminated type tags, bad bundle sizes, array under/overflow).
 - [x] libFuzzer harness + seed corpus under `fuzz/` (with a standalone g++/ASan
       driver for runtimes without libFuzzer; verified it catches the pre-fix bug).
-- [ ] Rename to `osctap` namespace; keep `oscpack` as a deprecated alias.
+- [x] Rename to `osctap` namespace; keep `oscpack` as a deprecated alias.
 - [x] GitHub Actions: Linux/macOS/Windows × GCC/Clang/MSVC, C++17 and C++20,
       plus ASan/UBSan and a standalone-fuzzer smoke-test job.
-- [ ] Docs skeleton.
-- [ ] oscpack-compatibility shim verified against existing call sites.
+- [x] Docs skeleton (README.md front page + ROADMAP/HERITAGE/fuzz docs).
+- [x] oscpack-compatibility shim verified against existing call sites (tests and
+      examples still use `oscpack::` and compile against the alias).
+
+**Phase 0 complete.** Deferred to Phase 1: rename the on-disk `oscpack/` directory and
+`<oscpack/...>` include paths to `osctap/` (with a redirecting shim header for the old
+paths). The C++ namespace is renamed; the directory/include layout intentionally was
+not, to keep this step low-risk and existing `#include` paths working.
 
 ### Phase 1 — Hardening & modernization
 - [ ] OSS-Fuzz submission (free continuous fuzzing for OSS).

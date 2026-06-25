@@ -39,7 +39,7 @@
 #include <cstdint>
 
 
-namespace oscpack{
+namespace osctap{
 
 enum ValueTypeSizes{
     OSC_SIZEOF_INT32 = 4,
@@ -185,7 +185,12 @@ constexpr ArrayInitiator BeginArray() { return {}; }
 struct ArrayTerminator{ };
 constexpr ArrayTerminator EndArray() { return {}; }
 
-} // namespace osc
+} // namespace osctap
 
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_OSCTYPES_H */

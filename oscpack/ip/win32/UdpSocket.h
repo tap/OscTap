@@ -60,7 +60,7 @@
 
 typedef int socklen_t;
 
-namespace oscpack
+namespace osctap
 {
 namespace win32
 {
@@ -453,8 +453,12 @@ public:
 
 struct Implementation
 {
-    using udp_socket_t = oscpack::win32::UdpSocketImplementation;
-    using socket_multiplexer_t = oscpack::win32::SocketReceiveMultiplexerImplementation<udp_socket_t>;
+    using udp_socket_t = osctap::win32::UdpSocketImplementation;
+    using socket_multiplexer_t = osctap::win32::SocketReceiveMultiplexerImplementation<udp_socket_t>;
 };
 }
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;

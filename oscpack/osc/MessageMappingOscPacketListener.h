@@ -44,12 +44,12 @@
 
 
 
-namespace oscpack{
+namespace osctap{
 
 template< class T >
 class MessageMappingOscPacketListener : public OscPacketListener{
 public:
-    typedef void (T::*function_type)(const oscpack::ReceivedMessage&, const IpEndpointName&);
+    typedef void (T::*function_type)(const osctap::ReceivedMessage&, const IpEndpointName&);
 
 protected:
     void RegisterMessageFunction( const char *addressPattern, function_type f )
@@ -57,7 +57,7 @@ protected:
         functions_.insert( std::make_pair( addressPattern, f ) );
     }
 
-    virtual void ProcessMessage( const oscpack::ReceivedMessage& m,
+    virtual void ProcessMessage( const osctap::ReceivedMessage& m,
 		const IpEndpointName& remoteEndpoint )
     {
         typename function_map_type::iterator i = functions_.find( m.AddressPattern() );
@@ -75,6 +75,11 @@ private:
     function_map_type functions_;
 };
 
-} // namespace osc
+} // namespace osctap
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_MESSAGEMAPPINGOSCPACKETLISTENER_H */

@@ -41,7 +41,7 @@
 
 #include <cstring>
 
-namespace oscpack
+namespace osctap
 {
 class NetworkInitializer
 {
@@ -81,3 +81,7 @@ inline unsigned long GetHostByName( const char *name )
   return result;
 }
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;

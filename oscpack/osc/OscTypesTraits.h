@@ -2,10 +2,10 @@
 #include "OscReceivedElements.h"
 
 #include <type_traits>
-namespace oscpack
+namespace osctap
 {
 // Helpers to get the values.
-template<oscpack::TypeTagValues>
+template<osctap::TypeTagValues>
 struct OscpackFunction;
 
 // For the ones that requires access to more than the type.
@@ -15,71 +15,71 @@ struct object_required_trait {};
 struct object_useless_trait   {};
 
 template<>
-struct OscpackFunction<oscpack::INT32_TYPE_TAG>
+struct OscpackFunction<osctap::INT32_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsInt32;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsInt32Unchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsInt32;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsInt32Unchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::INT64_TYPE_TAG>
+struct OscpackFunction<osctap::INT64_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsInt64;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsInt64Unchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsInt64;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsInt64Unchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::FLOAT_TYPE_TAG>
+struct OscpackFunction<osctap::FLOAT_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsFloat;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsFloatUnchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsFloat;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsFloatUnchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::DOUBLE_TYPE_TAG>
+struct OscpackFunction<osctap::DOUBLE_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsDouble;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsDoubleUnchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsDouble;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsDoubleUnchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::CHAR_TYPE_TAG>
+struct OscpackFunction<osctap::CHAR_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsChar;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsCharUnchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsChar;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsCharUnchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::STRING_TYPE_TAG>
+struct OscpackFunction<osctap::STRING_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsString;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsStringUnchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsString;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsStringUnchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::SYMBOL_TYPE_TAG>
+struct OscpackFunction<osctap::SYMBOL_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsSymbol;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsSymbolUnchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsSymbol;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsSymbolUnchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::BLOB_TYPE_TAG>
+struct OscpackFunction<osctap::BLOB_TYPE_TAG>
 {
     using conversion_mode = object_required_trait;
-    static const constexpr auto convert =           &oscpack::ReceivedMessageArgument::AsBlob;
-    static const constexpr auto convert_unchecked = &oscpack::ReceivedMessageArgument::AsBlobUnchecked;
+    static const constexpr auto convert =           &osctap::ReceivedMessageArgument::AsBlob;
+    static const constexpr auto convert_unchecked = &osctap::ReceivedMessageArgument::AsBlobUnchecked;
 };
 
 template<>
-struct OscpackFunction<oscpack::TRUE_TYPE_TAG>
+struct OscpackFunction<osctap::TRUE_TYPE_TAG>
 {
     using conversion_mode = object_useless_trait;
     static bool true_fun() { return true; }
@@ -88,7 +88,7 @@ struct OscpackFunction<oscpack::TRUE_TYPE_TAG>
 };
 
 template<>
-struct OscpackFunction<oscpack::FALSE_TYPE_TAG>
+struct OscpackFunction<osctap::FALSE_TYPE_TAG>
 {
     using conversion_mode = object_useless_trait;
     static bool false_fun() { return false; }
@@ -97,7 +97,7 @@ struct OscpackFunction<oscpack::FALSE_TYPE_TAG>
 };
 
 template<>
-struct OscpackFunction<oscpack::INFINITUM_TYPE_TAG>
+struct OscpackFunction<osctap::INFINITUM_TYPE_TAG>
 {
     using conversion_mode = object_useless_trait;
     static InfinitumType impulse_fun() { return {}; }
@@ -106,7 +106,7 @@ struct OscpackFunction<oscpack::INFINITUM_TYPE_TAG>
 };
 
 template<>
-struct OscpackFunction<oscpack::NIL_TYPE_TAG>
+struct OscpackFunction<osctap::NIL_TYPE_TAG>
 {
     using conversion_mode = object_useless_trait;
     static NilType nil_fun() { return {}; }
@@ -114,8 +114,8 @@ struct OscpackFunction<oscpack::NIL_TYPE_TAG>
     static const constexpr auto convert_unchecked = &nil_fun;
 };
 
-template<oscpack::TypeTagValues val>
-auto convert(oscpack::ReceivedMessageArgument arg,
+template<osctap::TypeTagValues val>
+auto convert(osctap::ReceivedMessageArgument arg,
              std::enable_if_t<
               std::is_same<
                typename OscpackFunction<val>::conversion_mode,
@@ -126,8 +126,8 @@ auto convert(oscpack::ReceivedMessageArgument arg,
   return (arg.*OscpackFunction<val>::convert)();
 }
 
-template<oscpack::TypeTagValues val>
-auto convert(oscpack::ReceivedMessageArgument,
+template<osctap::TypeTagValues val>
+auto convert(osctap::ReceivedMessageArgument,
              std::enable_if_t<
               std::is_same<
                typename OscpackFunction<val>::conversion_mode,
@@ -139,3 +139,7 @@ auto convert(oscpack::ReceivedMessageArgument,
 }
 
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;

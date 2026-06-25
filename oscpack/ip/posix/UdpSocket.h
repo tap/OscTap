@@ -62,7 +62,7 @@
 #include <oscpack/ip/PacketListener.h>
 #include <oscpack/ip/TimerListener.h>
 
-namespace oscpack
+namespace osctap
 {
 
 namespace posix
@@ -485,9 +485,13 @@ public:
 
 struct Implementation
 {
-    using udp_socket_t = oscpack::posix::UdpSocketImplementation;
-    using socket_multiplexer_t = oscpack::posix::SocketReceiveMultiplexerImplementation<udp_socket_t>;
+    using udp_socket_t = osctap::posix::UdpSocketImplementation;
+    using socket_multiplexer_t = osctap::posix::SocketReceiveMultiplexerImplementation<udp_socket_t>;
 };
 }
 
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;

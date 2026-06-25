@@ -41,7 +41,7 @@
 #include "../ip/PacketListener.h"
 
 
-namespace oscpack{
+namespace osctap{
 
 class OscPacketListener : public PacketListener{
 public:
@@ -56,7 +56,7 @@ public:
     unsigned int MaxBundleNestingDepth() const { return maxBundleNestingDepth_; }
 
 protected:
-    virtual void ProcessBundle( const oscpack::ReceivedBundle& b,
+    virtual void ProcessBundle( const osctap::ReceivedBundle& b,
         const IpEndpointName& remoteEndpoint )
     {
         // ignore bundle time tag for now
@@ -82,14 +82,14 @@ protected:
         }
     }
 
-    virtual void ProcessMessage( const oscpack::ReceivedMessage& m,
+    virtual void ProcessMessage( const osctap::ReceivedMessage& m,
         const IpEndpointName& remoteEndpoint ) = 0;
 
 public:
   void ProcessPacket( const char *data, int size,
       const IpEndpointName& remoteEndpoint ) override
     {
-        oscpack::ReceivedPacket p( data, size );
+        osctap::ReceivedPacket p( data, size );
         if( p.IsBundle() )
             ProcessBundle( ReceivedBundle(p), remoteEndpoint );
         else
@@ -101,6 +101,11 @@ private:
     unsigned int maxBundleNestingDepth_ = DEFAULT_MAX_BUNDLE_NESTING_DEPTH;
 };
 
-} // namespace osc
+} // namespace osctap
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_OSCPACKETLISTENER_H */

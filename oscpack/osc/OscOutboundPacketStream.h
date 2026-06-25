@@ -45,7 +45,7 @@
 #include <iostream>
 #include <string_view>
 
-namespace oscpack
+namespace osctap
 { using string_view = std::string_view; }
 
 #include "SmallString.h"
@@ -63,7 +63,7 @@ namespace oscpack
 #endif
 
 
-namespace oscpack{
+namespace osctap{
 
 
 class OutOfBufferMemoryException : public Exception{
@@ -95,13 +95,13 @@ public:
 
 struct BeginMessageN
 {
-    explicit BeginMessageN(oscpack::string_view str):
+    explicit BeginMessageN(osctap::string_view str):
       addressPattern{str}
     {
 
     }
 
-    oscpack::string_view addressPattern;
+    osctap::string_view addressPattern;
 };
 
 
@@ -476,7 +476,7 @@ public:
     }
 
     OutboundPacketStream& operator<<(
-        oscpack::string_view rhs)
+        osctap::string_view rhs)
     {
       CheckForAvailableArgumentSpace( RoundUp4(rhs.size() + 1) );
 
@@ -499,7 +499,7 @@ public:
     OutboundPacketStream& operator<<(
         const std::string& rhs)
     {
-      operator<<(oscpack::string_view(rhs));
+      operator<<(osctap::string_view(rhs));
       return *this;
     }
 
@@ -680,6 +680,11 @@ private:
     bool messageIsInProgress_;
 };
 
-} // namespace osc
+} // namespace osctap
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_OSCOUTBOUNDPACKETSTREAM_H */

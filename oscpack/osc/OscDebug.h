@@ -2,7 +2,7 @@
 #include "OscReceivedElements.h"
 #include <iostream>
 
-namespace oscpack
+namespace osctap
 {
 
 template<typename Stream>
@@ -44,3 +44,7 @@ auto& debug(Stream& s, const ReceivedMessage& mess)
   return s;
 }
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
