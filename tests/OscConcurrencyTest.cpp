@@ -22,6 +22,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <exception>
 #include <iostream>
 #include <thread>
 
@@ -58,21 +59,29 @@ int main()
 
     // Best-effort: send one packet so ProcessPacket() runs on the receive thread
     // concurrently with this one (exercises the receive path, not just the
-    // break). Receipt is NOT asserted -- a sandboxed CI environment may not
-    // deliver loopback UDP -- so the test neither hangs nor fails when no packet
-    // arrives; it just doesn't get that extra concurrency coverage.
-    {
+    // break). This is genuinely best-effort -- some sandboxed CI environments
+    // disallow even loopback UDP connect/send (e.g. macOS runners throw
+    // "unable to connect udp socket") -- so any failure is swallowed and the
+    // receive-loop break test below proceeds regardless. Receipt is never
+    // asserted.
+    bool sent = false;
+    try {
         UdpTransmitSocket sender( IpEndpointName( 127, 0, 0, 1, port ) );
         const char ping[] = { '/','p',0,0, ',',0,0,0 }; // minimal valid OSC message
         sender.Send( ping, sizeof( ping ) );
+        sent = true;
+    } catch( const std::exception & ) {
+        // networking restricted in this environment; skip the receive coverage.
     }
 
-    // Wait (bounded) for the packet to be processed, so ProcessPacket() really
-    // does run concurrently before we stop the loop. Loopback delivery is
-    // reliable, but the wait is capped so a (rare) dropped datagram can't hang
-    // the test -- termination is driven by the break loop below regardless.
-    for( int i = 0; i < 200 && listener.packets.load( std::memory_order_relaxed ) == 0; ++i )
-        std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+    // If a packet was sent, wait (bounded) for it to be processed so
+    // ProcessPacket() really does run concurrently before we stop the loop. The
+    // wait is capped so a dropped datagram can't hang the test -- termination is
+    // driven by the break loop below regardless.
+    if( sent ){
+        for( int i = 0; i < 200 && listener.packets.load( std::memory_order_relaxed ) == 0; ++i )
+            std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+    }
 
     // Stop Run() from this thread. Run() resets its break flag when it starts, so
     // a single AsynchronousBreak() could race ahead of that reset and be missed;
