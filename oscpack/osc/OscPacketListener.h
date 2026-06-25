@@ -41,14 +41,37 @@
 #include "../ip/PacketListener.h"
 
 
-namespace oscpack{
+namespace osctap{
 
 class OscPacketListener : public PacketListener{
+public:
+    // Maximum bundle nesting depth accepted by the default ProcessBundle()
+    // implementation. Bundles nested deeper than this are ignored, to bound
+    // stack usage when processing untrusted packets (a deeply-nested bundle is
+    // otherwise valid OSC and would recurse once per level). Configurable for
+    // the rare application that legitimately nests deeper.
+    static const unsigned int DEFAULT_MAX_BUNDLE_NESTING_DEPTH = 64;
+
+    void SetMaxBundleNestingDepth( unsigned int depth ) { maxBundleNestingDepth_ = depth; }
+    unsigned int MaxBundleNestingDepth() const { return maxBundleNestingDepth_; }
+
 protected:
-    virtual void ProcessBundle( const oscpack::ReceivedBundle& b,
+    virtual void ProcessBundle( const osctap::ReceivedBundle& b,
         const IpEndpointName& remoteEndpoint )
     {
         // ignore bundle time tag for now
+
+        // Bound recursion depth so a deeply-nested bundle from an untrusted
+        // sender cannot exhaust the stack. The guard restores the depth on the
+        // way out even if ProcessMessage() or element construction throws.
+        if( bundleNestingDepth_ >= maxBundleNestingDepth_ )
+            return;
+
+        struct DepthGuard{
+            unsigned int& depth;
+            explicit DepthGuard( unsigned int& d ) : depth( d ) { ++depth; }
+            ~DepthGuard() { --depth; }
+        } depthGuard( bundleNestingDepth_ );
 
         for( ReceivedBundle::const_iterator i = b.ElementsBegin();
         i != b.ElementsEnd(); ++i ){
@@ -59,21 +82,30 @@ protected:
         }
     }
 
-    virtual void ProcessMessage( const oscpack::ReceivedMessage& m,
+    virtual void ProcessMessage( const osctap::ReceivedMessage& m,
         const IpEndpointName& remoteEndpoint ) = 0;
 
 public:
   void ProcessPacket( const char *data, int size,
       const IpEndpointName& remoteEndpoint ) override
     {
-        oscpack::ReceivedPacket p( data, size );
+        osctap::ReceivedPacket p( data, size );
         if( p.IsBundle() )
             ProcessBundle( ReceivedBundle(p), remoteEndpoint );
         else
             ProcessMessage( ReceivedMessage(p), remoteEndpoint );
     }
+
+private:
+    unsigned int bundleNestingDepth_ = 0;
+    unsigned int maxBundleNestingDepth_ = DEFAULT_MAX_BUNDLE_NESTING_DEPTH;
 };
 
-} // namespace osc
+} // namespace osctap
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_OSCPACKETLISTENER_H */

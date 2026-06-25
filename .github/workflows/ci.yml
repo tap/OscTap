@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }} / ${{ matrix.cxx || 'msvc' }} / C++${{ matrix.std }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  cc: gcc,    cxx: g++,     std: 17 }
+          - { os: ubuntu-latest,  cc: gcc,    cxx: g++,     std: 20 }
+          - { os: ubuntu-latest,  cc: clang,  cxx: clang++, std: 17 }
+          - { os: ubuntu-latest,  cc: clang,  cxx: clang++, std: 20 }
+          - { os: macos-latest,   cc: clang,  cxx: clang++, std: 17 }
+          - { os: macos-latest,   cc: clang,  cxx: clang++, std: 20 }
+          - { os: windows-latest, std: 17 }
+          - { os: windows-latest, std: 20 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DOSCPACK_BUILD_EXAMPLES=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }}
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+  sanitizers:
+    name: ASan + UBSan (unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure with sanitizers
+        run: >
+          cmake -S . -B build -DOSCPACK_BUILD_EXAMPLES=ON
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all -g"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+        env:
+          CC: gcc
+          CXX: g++
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Run unit tests under sanitizers
+        # The test harness intentionally leaks its aligned scratch buffers
+        # (NewMessageBuffer), so leak detection is disabled here; ASan still
+        # checks for overflows/use-after-free and UBSan for undefined behaviour.
+        run: ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build --output-on-failure
+
+  fuzz-smoke:
+    name: Fuzzer smoke test (standalone + ASan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure standalone fuzzer
+        run: cmake -S . -B build-fuzz -DOSCPACK_BUILD_EXAMPLES=OFF -DOSCTAP_FUZZER_STANDALONE=ON
+
+      - name: Build fuzzer
+        run: cmake --build build-fuzz --target fuzz_parse
+
+      - name: Replay corpus and run mutation loop
+        run: ./build-fuzz/fuzz_parse fuzz/corpus/*

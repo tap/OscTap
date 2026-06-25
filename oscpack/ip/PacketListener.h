@@ -37,7 +37,7 @@
 #ifndef INCLUDED_OSCPACK_PACKETLISTENER_H
 #define INCLUDED_OSCPACK_PACKETLISTENER_H
 
-namespace oscpack
+namespace osctap
 {
 class IpEndpointName;
 
@@ -48,4 +48,9 @@ class PacketListener{
                                 const IpEndpointName& remoteEndpoint ) = 0;
 };
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
+
 #endif /* INCLUDED_OSCPACK_PACKETLISTENER_H */

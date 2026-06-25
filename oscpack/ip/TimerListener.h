@@ -37,7 +37,7 @@
 #ifndef INCLUDED_OSCPACK_TIMERLISTENER_H
 #define INCLUDED_OSCPACK_TIMERLISTENER_H
 
-namespace oscpack
+namespace osctap
 {
 class TimerListener{
 public:
@@ -45,4 +45,9 @@ public:
     virtual void TimerExpired() = 0;
 };
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
+
 #endif /* INCLUDED_OSCPACK_TIMERLISTENER_H */

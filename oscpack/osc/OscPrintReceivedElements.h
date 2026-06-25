@@ -46,7 +46,7 @@
 #include <iostream>
 #include <iomanip>
 
-namespace oscpack{
+namespace osctap{
 
 template<typename Ostream_T>
 Ostream_T& operator<<( Ostream_T & os, const ReceivedPacket& p );
@@ -223,6 +223,10 @@ inline Ostream_T& operator<<( Ostream_T & os, const ReceivedBundle& b )
 {
     static thread_local int indent = 0;
 
+    // Bound recursion depth so printing an untrusted, deeply-nested bundle
+    // cannot exhaust the stack.
+    const int MAX_BUNDLE_PRINT_DEPTH = 64;
+
     for( int j=0; j < indent; ++j )
         os << "  ";
     os << "{ ( ";
@@ -237,8 +241,14 @@ inline Ostream_T& operator<<( Ostream_T & os, const ReceivedBundle& b )
     for( ReceivedBundle::const_iterator i = b.ElementsBegin();
             i != b.ElementsEnd(); ++i ){
         if( i->IsBundle() ){
-            ReceivedBundle b(*i);
-            os << b << "\n";
+            if( indent >= MAX_BUNDLE_PRINT_DEPTH ){
+                for( int j=0; j < indent; ++j )
+                    os << "  ";
+                os << "{ ...bundle nesting depth limit reached... }\n";
+            }else{
+                ReceivedBundle nested(*i);
+                os << nested << "\n";
+            }
         }else{
             ReceivedMessage m(*i);
             for( int j=0; j < indent; ++j )
@@ -271,6 +281,11 @@ inline Ostream_T& operator<<( Ostream_T& os, const ReceivedPacket& p )
     return os;
 }
 
-} // namespace osc
+} // namespace osctap
+
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;
 
 #endif /* INCLUDED_OSCPACK_OSCPRINTRECEIVEDELEMENTS_H */

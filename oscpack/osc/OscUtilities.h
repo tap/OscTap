@@ -2,7 +2,7 @@
 #include <cstdint>
 #include "OscHostEndianness.h"
 
-namespace oscpack
+namespace osctap
 {
 
 // round up to the next highest multiple of 4. unless x is already a multiple of 4
@@ -224,3 +224,7 @@ inline uint64_t ToUInt64( const char *p )
 #endif
 }
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;

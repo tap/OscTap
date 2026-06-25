@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <cstring>
-namespace oscpack
+namespace osctap
 {
     // in general NetworkInitializer is only used internally, but if you're
     // application creates multiple sockets from different threads at runtime you
@@ -45,3 +45,7 @@ namespace oscpack
       return result;
     }
 }
+
+// Backwards-compatibility alias: this library was formerly named oscpack.
+// Existing code that uses the oscpack:: namespace continues to compile.
+namespace oscpack = osctap;

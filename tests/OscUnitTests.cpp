@@ -37,12 +37,17 @@
 #include "OscUnitTests.h"
 
 #include <cstring>
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
 
 #include "osc/OscReceivedElements.h"
 #include "osc/OscPrintReceivedElements.h"
 #include "osc/OscOutboundPacketStream.h"
+#include "osc/OscPacketListener.h"
+#include "ip/IpEndpointName.h"
+
+#include <vector>
 
 #if defined(__BORLANDC__) // workaround for BCB4 release build intrinsics bug
 namespace std {
@@ -53,6 +58,9 @@ using ::__strcpy__;  // avoid error: E2316 '__strcpy__' is not a member of 'std'
 
 namespace osc{
 
+  // NOTE: this deliberately uses the legacy `oscpack` namespace (now a
+  // compatibility alias for `osctap`). Leaving the tests on the alias is the
+  // live verification that the shim works -- do not rename to `osctap`.
   using namespace oscpack;
 
 static int passCount_=0, failCount_=0;
@@ -60,6 +68,11 @@ static int passCount_=0, failCount_=0;
 void PrintTestSummary()
 {
     std::cout << (passCount_+failCount_) << " tests run, " << passCount_ << " passed, " << failCount_ << " failed.\n";
+}
+
+int FailureCount()
+{
+    return failCount_;
 }
 
 void pass_equality( const char *slhs, const char *srhs, const char *file, int line )
@@ -107,8 +120,10 @@ void assertEqual_( const char* lhs, const char* rhs, const char *slhs, const cha
 //---------------------------------------------------------------------------
 char * AllocateAligned4( unsigned long size )
 {
-    char *s = new char[ size + 4 ];   //allocate on stack to get 4 byte alignment
-    return (char*)((long)(s-1) & (~0x03L)) + 4;
+    char *s = new char[ size + 4 ];   // over-allocate so we can round up to a 4-byte boundary
+    // Use uintptr_t, not long: long is 32-bit on Win64 (LLP64), which would
+    // truncate the pointer.
+    return (char*)( ((uintptr_t)(s - 1) & ~(uintptr_t)0x03) + 4 );
 }
 
 // allocate a 4 byte aligned copy of s
@@ -435,11 +450,180 @@ void test3()
 }
 
 
+//---------------------------------------------------------------------------
+// Regression tests for malformed-packet handling. Several of these crafted
+// packets previously slipped past validation -- most importantly the blob-size
+// bounds check in ReceivedMessage::Init(), which constructed but never threw
+// its MalformedMessageException, allowing an out-of-bounds read. Each packet
+// below must now be rejected with an osc::Exception.
+
+static bool ParsingMessageThrows( const char *data, std::size_t size )
+{
+    char *buffer = NewMessageBuffer( data, size );
+    try{
+        ReceivedMessage m( ReceivedPacket( buffer, size ) );
+        // Walking the arguments should never be reached for these inputs --
+        // validation in Init() should reject them up front -- but iterate
+        // anyway so the test fails loudly rather than reading out of bounds.
+        for( ReceivedMessage::const_iterator i = m.ArgumentsBegin();
+                i != m.ArgumentsEnd(); ++i )
+            (void)i->TypeTag();
+    }catch( const Exception& ){
+        return true;
+    }
+    return false;
+}
+
+static bool ParsingBundleThrows( const char *data, std::size_t size )
+{
+    char *buffer = NewMessageBuffer( data, size );
+    try{
+        ReceivedBundle b( ReceivedPacket( buffer, size ) );
+        (void)b.ElementCount();
+    }catch( const Exception& ){
+        return true;
+    }
+    return false;
+}
+
+void test4()
+{
+    // CRITICAL: a blob whose declared size extends far past the packet.
+    // address "/b", type tags ",b", then a 4-byte blob size of 0x10000000
+    // (256 MB, in-range for IsValidElementSizeValue) with no payload present.
+    {
+        char m[] = { '/','b',0,0,  ',','b',0,0,  0,0,0,0 };
+        m[8] = 0x10; // big-endian 0x10000000 blob size, no data follows
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // a blob size that is out of range (0xFFFFFFFF == negative int32) is rejected
+    {
+        char m[] = { '/','b',0,0,  ',','b',0,0,  0,0,0,0 };
+        m[8] = (char)0xFF; m[9] = (char)0xFF; m[10] = (char)0xFF; m[11] = (char)0xFF;
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // unterminated type tag string (no null terminator before end of packet)
+    {
+        const char m[] = { '/','x',0,0,  ',','i','i','i' };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // fixed-size argument truncated: type tag 'i' but no 4 bytes of data follow
+    {
+        const char m[] = { '/','x',0,0,  ',','i',0,0 };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // array close ']' with no matching open '[' (array-level underflow)
+    {
+        const char m[] = { '/','x',0,0,  ',',']',0,0 };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // unterminated array: '[' with no closing ']'
+    {
+        const char m[] = { '/','x',0,0,  ',','[',0,0 };
+        assertEqual( ParsingMessageThrows( m, sizeof(m) ), true );
+    }
+
+    // a bundle element whose declared size extends past the packet
+    {
+        char b[] = { '#','b','u','n','d','l','e',0,
+                     0,0,0,0,0,0,0,0,    // time tag
+                     0,0,0,0 };          // element size
+        b[16] = 0x10; // 0x10000000-byte element, no data follows
+        assertEqual( ParsingBundleThrows( b, sizeof(b) ), true );
+    }
+
+    // positive control: a well-formed blob must still parse and round-trip.
+    {
+        char buffer[64];
+        std::memset( buffer, 0, sizeof(buffer) );
+        OutboundPacketStream ps( buffer, sizeof(buffer) );
+        const char payload[] = { 1, 2, 3, 4, 5 };
+        ps << BeginMessage( "/b" ) << Blob( payload, sizeof(payload) ) << oscpack::EndMessage();
+
+        bool ok = true;
+        try{
+            ReceivedMessage m( ReceivedPacket( ps.Data(), ps.Size() ) );
+            ReceivedMessage::const_iterator i = m.ArgumentsBegin();
+            const void *data;
+            osc_bundle_element_size_t size;
+            i->AsBlob( data, size );
+            assertEqual( size, (osc_bundle_element_size_t)sizeof(payload) );
+        }catch( const Exception& ){
+            ok = false;
+        }
+        assertEqual( ok, true );
+    }
+}
+
+//---------------------------------------------------------------------------
+// Regression test for bounded bundle-nesting recursion. A deeply-nested bundle
+// is valid OSC but would otherwise recurse once per level in ProcessBundle(),
+// allowing a single untrusted packet to exhaust the stack.
+
+namespace {
+
+struct CountingListener : public oscpack::OscPacketListener{
+    int messageCount = 0;
+    void ProcessMessage( const oscpack::ReceivedMessage&,
+                         const oscpack::IpEndpointName& ) override
+    { ++messageCount; }
+};
+
+// Emit `depth` nested bundles wrapping a single message.
+void BuildNestedBundle( OutboundPacketStream& ps, int depth )
+{
+    for( int i = 0; i < depth; ++i ) ps << BeginBundle();
+    ps << BeginMessage( "/deep" ) << 1 << oscpack::EndMessage();
+    for( int i = 0; i < depth; ++i ) ps << EndBundle();
+}
+
+} // namespace
+
+void test5()
+{
+    oscpack::IpEndpointName dummy;
+
+    // Shallow nesting: the inner message is delivered as normal.
+    {
+        char buf[1024];
+        std::memset( buf, 0, sizeof(buf) );
+        OutboundPacketStream ps( buf, sizeof(buf) );
+        BuildNestedBundle( ps, 3 );
+        CountingListener listener;
+        listener.ProcessPacket( ps.Data(), (int)ps.Size(), dummy );
+        assertEqual( listener.messageCount, 1 );
+    }
+
+    // Pathologically deep nesting (beyond the default limit): processing must
+    // terminate without exhausting the stack, and the over-deep inner message
+    // is not delivered.
+    {
+        const int depth =
+            (int)oscpack::OscPacketListener::DEFAULT_MAX_BUNDLE_NESTING_DEPTH + 50;
+        std::vector<char> buf( 64 + depth * 24, 0 );
+        OutboundPacketStream ps( buf.data(), buf.size() );
+        BuildNestedBundle( ps, depth );
+        CountingListener listener;
+        listener.ProcessPacket( ps.Data(), (int)ps.Size(), dummy );
+        assertEqual( listener.messageCount, 0 );
+    }
+}
+
+//---------------------------------------------------------------------------
+
+
 void RunUnitTests()
 {
     test1();
     test2();
     test3();
+    test4();
+    test5();
     PrintTestSummary();
 }
 
@@ -452,8 +636,9 @@ int main(int argc, char* argv[])
 {
     (void)argc;
     (void)argv;
-    
+
     osc::RunUnitTests();
+    return osc::FailureCount() == 0 ? 0 : 1;
 }
 
 #endif
