@@ -11,6 +11,7 @@ enable_testing()
 set(OSCPACK_BUILD_EXAMPLES ON CACHE BOOL "Should we build examples")
 set(OSCTAP_RTSAN OFF CACHE BOOL "Build the realtime-safety test under RealtimeSanitizer + function-effect analysis (requires Clang >= 20)")
 set(OSCTAP_TSAN OFF CACHE BOOL "Build the concurrency test under ThreadSanitizer (POSIX; GCC/Clang)")
+set(OSCTAP_FREESTANDING OFF CACHE BOOL "Build the freestanding/embedded-profile smoke test with exceptions and RTTI disabled (Phase 2 'Reach')")
 
 set(CMAKE_INCLUDE_CURRENT_DIR 1)
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
@@ -90,6 +91,24 @@ if(OSCPACK_BUILD_EXAMPLES)
 
   #add_executable(SimpleSend examples/SimpleSend.cpp)
   #target_link_libraries(SimpleSend oscpack)
+endif()
+
+# Freestanding / embedded profile (Phase 2 "Reach"). Builds a single smoke test
+# of the parse/serialize core with C++ exceptions and RTTI disabled and the
+# hosted-only facilities dropped (-DOSCTAP_FREESTANDING). The flags are PRIVATE
+# to this target so the exception-based tests above are unaffected; this target
+# is the standing guard that the core stays embedded-buildable (e.g. a Raspberry
+# Pi Pico 2W — see docs/EMBEDDED_PICO2W.md).
+if(OSCTAP_FREESTANDING)
+  add_executable(OscFreestandingTest tests/OscFreestandingTest.cpp)
+  target_link_libraries(OscFreestandingTest oscpack)
+  target_compile_definitions(OscFreestandingTest PRIVATE OSCTAP_FREESTANDING)
+  if(MSVC)
+    target_compile_options(OscFreestandingTest PRIVATE /EHs-c- /GR-)
+  else()
+    target_compile_options(OscFreestandingTest PRIVATE -fno-exceptions -fno-rtti)
+  endif()
+  add_test(NAME OscFreestandingTest COMMAND OscFreestandingTest)
 endif()
 
 set(OSCTAP_BUILD_FUZZERS OFF CACHE BOOL "Build the libFuzzer fuzz target (requires Clang)")

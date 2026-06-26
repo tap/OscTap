@@ -8,6 +8,13 @@ the original conversation. For the full plan and rationale see
 
 - **Phase 0 is complete** (security audit fixes, fuzzer, CI, docs, namespace rename).
   See the scorecard in `ROADMAP.md`.
+- **Phase 1 is complete** (directory rename + shim, ClusterFuzzLite, `bit_cast`/
+  `constexpr` parsing, warnings-as-errors, RTSan, TSan).
+- **Phase 2 ("Reach") prep has started**: the freestanding/embedded profile
+  groundwork is landed — the `OSCTAP_THROW` seam (`osc/OscConfig.h`), the
+  `OSCTAP_FREESTANDING` CMake option + `freestanding` CI job, and the Raspberry Pi
+  Pico 2W guide ([`EMBEDDED_PICO2W.md`](EMBEDDED_PICO2W.md)). The remaining Reach
+  items (QEMU, Android NDK, multicast) stay demand-gated.
 - All six audit findings are fixed with regression tests; see commit history and
   `tests/OscUnitTests.cpp` (`test4`/`test5`).
 - **CI is the source of truth for build health.** `.github/workflows/ci.yml` builds and
@@ -34,6 +41,10 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
 # fuzzing — standalone driver (g++, no libFuzzer runtime needed)
 cmake -S . -B build-fuzz -DOSCTAP_FUZZER_STANDALONE=ON
 cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/corpus/*
+
+# freestanding / embedded profile (exceptions + RTTI off)
+cmake -S . -B build-fs -DOSCPACK_BUILD_EXAMPLES=OFF -DOSCTAP_FREESTANDING=ON
+cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandingTest
 ```
 
 ## Landmines — read before changing things
@@ -74,6 +85,26 @@ cmake --build build-fuzz --target fuzz_parse && ./build-fuzz/fuzz_parse fuzz/cor
   `reinterpret_cast<T*>` over the byte buffer, or `#ifdef OSC_HOST_*_ENDIAN`** — that was
   the audit-#6 UB, and UBSan guards against it. The byte helpers are `constexpr`; keep the
   RT read accessors routed through them (`memcpy` is RTSan/function-effects-safe).
+- **`OSCTAP_THROW` is the only way the core raises** (`osc/OscConfig.h`). Every
+  `throw` in `OscReceivedElements.h`/`OscOutboundPacketStream.h` goes through it so
+  the library compiles under `-fno-exceptions`. **Do not reintroduce a bare `throw`
+  in the core** — it breaks the `freestanding` CI job (a bare `throw` is a hard
+  error under `-fno-exceptions`). With exceptions on, `OSCTAP_THROW(X)` *is* `throw X`,
+  so hosted behaviour (and the `test4`/`test5` malformed-input asserts) is unchanged.
+  Under `-fno-exceptions` it calls a non-returning fatal handler (default
+  `std::abort()`, overridable via `OSCTAP_FATAL_HANDLER`).
+- **`OSCTAP_FREESTANDING` drops hosted-only facilities** — `<iostream>`, the
+  `std::vector`-backed `OwnedMessage`, and the `std::string` `operator<<`. If you add
+  a new core feature that needs `<iostream>`/`<vector>`/`std::string`, guard it with
+  `#ifndef OSCTAP_FREESTANDING` (and keep `tests/OscFreestandingTest.cpp` compiling),
+  or it will break the `freestanding` job. The freestanding flags are **PRIVATE to
+  the `OscFreestandingTest` target**, so the exception-based tests are unaffected.
+  Embedded posture and the Pico 2W recipe live in `docs/EMBEDDED_PICO2W.md`.
+- **Untrusted input on a no-exceptions build is fatal.** The parser validates by
+  throwing; with exceptions off there is nothing to catch, so a malformed packet
+  hits the fatal handler (a remote reset/DoS). Safe only on a trusted link; open
+  networks should keep exceptions on and `catch` the `Malformed*Exception` types. A
+  non-throwing `TryInit`/validate is the tracked Phase 2 follow-up.
 - **Include guards are still named `INCLUDED_OSCPACK_*`** — cosmetic, left as-is.
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with

@@ -40,11 +40,14 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring> // size_t
-#include <vector>
 #include "OscTypes.h"
 #include "OscException.h"
+#include "OscConfig.h"   // OSCTAP_THROW, OSCTAP_FREESTANDING
 #include "OscUtilities.h"
 #include <cstddef> // ptrdiff_t
+#ifndef OSCTAP_FREESTANDING
+#include <vector> // std::vector backs OwnedMessage (hosted-only)
+#endif
 
 
 namespace osctap{
@@ -123,13 +126,13 @@ class ReceivedPacket{
       // sanity check integer types declared in OscTypes.h
       // you'll need to fix OscTypes.h if any of these asserts fail
       if( !IsValidElementSizeValue(size) )
-        throw MalformedPacketException( "invalid packet size" );
+        OSCTAP_THROW( MalformedPacketException( "invalid packet size" ) );
 
       if( size == 0 )
-        throw MalformedPacketException( "zero length elements not permitted" );
+        OSCTAP_THROW( MalformedPacketException( "zero length elements not permitted" ) );
 
       if( !IsMultipleOf4(size) )
-        throw MalformedPacketException( "element size must be multiple of four" );
+        OSCTAP_THROW( MalformedPacketException( "element size must be multiple of four" ) );
 
       return size;
     }
@@ -229,18 +232,18 @@ class ReceivedMessageArgument{
     bool AsBool() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == TRUE_TYPE_TAG )
         return true;
       else if( *typeTagPtr_ == FALSE_TYPE_TAG )
         return false;
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     bool AsBoolUnchecked() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == TRUE_TYPE_TAG )
         return true;
       else
@@ -254,11 +257,11 @@ class ReceivedMessageArgument{
     int32_t AsInt32() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == INT32_TYPE_TAG )
         return AsInt32Unchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     int32_t AsInt32Unchecked() const OSCTAP_REALTIME
     {
@@ -269,11 +272,11 @@ class ReceivedMessageArgument{
     float AsFloat() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == FLOAT_TYPE_TAG )
         return AsFloatUnchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     float AsFloatUnchecked() const OSCTAP_REALTIME
     {
@@ -284,11 +287,11 @@ class ReceivedMessageArgument{
     char AsChar() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == CHAR_TYPE_TAG )
         return AsCharUnchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     char AsCharUnchecked() const OSCTAP_REALTIME
     {
@@ -299,11 +302,11 @@ class ReceivedMessageArgument{
     uint32_t AsRgbaColor() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == RGBA_COLOR_TYPE_TAG )
         return AsRgbaColorUnchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     uint32_t AsRgbaColorUnchecked() const OSCTAP_REALTIME
     {
@@ -314,11 +317,11 @@ class ReceivedMessageArgument{
     uint32_t AsMidiMessage() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == MIDI_MESSAGE_TYPE_TAG )
         return AsMidiMessageUnchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     uint32_t AsMidiMessageUnchecked() const OSCTAP_REALTIME
     {
@@ -329,11 +332,11 @@ class ReceivedMessageArgument{
     int64_t AsInt64() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == INT64_TYPE_TAG )
         return AsInt64Unchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     int64_t AsInt64Unchecked() const OSCTAP_REALTIME
     {
@@ -344,11 +347,11 @@ class ReceivedMessageArgument{
     uint64_t AsTimeTag() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == TIME_TAG_TYPE_TAG )
         return AsTimeTagUnchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     uint64_t AsTimeTagUnchecked() const OSCTAP_REALTIME
     {
@@ -359,11 +362,11 @@ class ReceivedMessageArgument{
     double AsDouble() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == DOUBLE_TYPE_TAG )
         return AsDoubleUnchecked();
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     double AsDoubleUnchecked() const OSCTAP_REALTIME
     {
@@ -374,11 +377,11 @@ class ReceivedMessageArgument{
     const char* AsString() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == STRING_TYPE_TAG )
         return argumentPtr_;
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     const char* AsStringUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
 
@@ -386,11 +389,11 @@ class ReceivedMessageArgument{
     const char* AsSymbol() const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == SYMBOL_TYPE_TAG )
         return argumentPtr_;
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     const char* AsSymbolUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
 
@@ -398,18 +401,18 @@ class ReceivedMessageArgument{
     void AsBlob( const void*& data, osc_bundle_element_size_t& size ) const
     {
       if( !typeTagPtr_ )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
       else if( *typeTagPtr_ == BLOB_TYPE_TAG )
         AsBlobUnchecked( data, size );
       else
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
     }
     void AsBlobUnchecked( const void*& data, osc_bundle_element_size_t& size ) const
     {
       // read blob size as an unsigned int then validate
       osc_bundle_element_size_t sizeResult = (osc_bundle_element_size_t)ToUInt32( argumentPtr_ );
       if( !IsValidElementSizeValue(sizeResult) )
-        throw MalformedMessageException("invalid blob size");
+        OSCTAP_THROW( MalformedMessageException("invalid blob size") );
 
       size = sizeResult;
       data = (void*)(argumentPtr_+ osctap::OSC_SIZEOF_INT32);
@@ -423,7 +426,7 @@ class ReceivedMessageArgument{
     {
       // it is only valid to call ComputeArrayItemCount when the argument is the array start marker
       if( !IsArrayBegin() )
-        throw WrongArgumentTypeException();
+        OSCTAP_THROW( WrongArgumentTypeException() );
 
       std::size_t result = 0;
       unsigned int level = 0;
@@ -592,7 +595,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( bool& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs = (*p_++).AsBool();
       return *this;
@@ -605,7 +608,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( int32_t& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs = (*p_++).AsInt32();
       return *this;
@@ -614,7 +617,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( float& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs = (*p_++).AsFloat();
       return *this;
@@ -623,7 +626,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( char& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs = (*p_++).AsChar();
       return *this;
@@ -632,7 +635,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( RgbaColor& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs.value = (*p_++).AsRgbaColor();
       return *this;
@@ -641,7 +644,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( MidiMessage& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs.value = (*p_++).AsMidiMessage();
       return *this;
@@ -650,7 +653,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( int64_t& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs = (*p_++).AsInt64();
       return *this;
@@ -659,7 +662,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( TimeTag& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs.value = (*p_++).AsTimeTag();
       return *this;
@@ -668,7 +671,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( double& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs = (*p_++).AsDouble();
       return *this;
@@ -677,7 +680,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( Blob& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       (*p_++).AsBlob( rhs.data, rhs.size );
       return *this;
@@ -686,7 +689,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( const char*& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs = (*p_++).AsString();
       return *this;
@@ -695,7 +698,7 @@ class ReceivedMessageArgumentStream{
     ReceivedMessageArgumentStream& operator>>( Symbol& rhs )
     {
       if( Eos() )
-        throw MissingArgumentException();
+        OSCTAP_THROW( MissingArgumentException() );
 
       rhs.value = (*p_++).AsSymbol();
       return *this;
@@ -706,7 +709,7 @@ class ReceivedMessageArgumentStream{
       (void) rhs; // suppress unused parameter warning
 
       if( !Eos() )
-        throw ExcessArgumentException();
+        OSCTAP_THROW( ExcessArgumentException() );
 
       return *this;
     }
@@ -717,20 +720,20 @@ class ReceivedMessage{
     void Init( const char *message, osc_bundle_element_size_t size )
     {
       if( !IsValidElementSizeValue(size) )
-        throw MalformedMessageException( "invalid message size" );
+        OSCTAP_THROW( MalformedMessageException( "invalid message size" ) );
 
       if( size == 0 )
-        throw MalformedMessageException( "zero length messages not permitted" );
+        OSCTAP_THROW( MalformedMessageException( "zero length messages not permitted" ) );
 
       if( !IsMultipleOf4(size) )
-        throw MalformedMessageException( "message size must be multiple of four" );
+        OSCTAP_THROW( MalformedMessageException( "message size must be multiple of four" ) );
 
       const char *end = message + size;
 
       typeTagsBegin_ = FindStr4End( addressPattern_, end );
       if( typeTagsBegin_ == 0 ){
         // address pattern was not terminated before end
-        throw MalformedMessageException( "unterminated address pattern" );
+        OSCTAP_THROW( MalformedMessageException( "unterminated address pattern" ) );
       }
 
       if( typeTagsBegin_ == end ){
@@ -741,7 +744,7 @@ class ReceivedMessage{
 
       }else{
         if( *typeTagsBegin_ != ',' )
-          throw MalformedMessageException( "type tags not present" );
+          OSCTAP_THROW( MalformedMessageException( "type tags not present" ) );
 
         if( *(typeTagsBegin_ + 1) == '\0' ){
           // zero length type tags
@@ -754,7 +757,7 @@ class ReceivedMessage{
 
           arguments_ = FindStr4End( typeTagsBegin_, end );
           if( arguments_ == 0 ){
-            throw MalformedMessageException( "type tags were not terminated before end of message" );
+            OSCTAP_THROW( MalformedMessageException( "type tags were not terminated before end of message" ) );
           }
 
           ++typeTagsBegin_; // advance past initial ','
@@ -782,7 +785,7 @@ class ReceivedMessage{
 
               case ARRAY_END_TYPE_TAG:
                 if( arrayLevel == 0 )
-                  throw MalformedMessageException( "array close tag ']' without matching open tag '['" );
+                  OSCTAP_THROW( MalformedMessageException( "array close tag ']' without matching open tag '['" ) );
                 --arrayLevel;
                 // (zero length argument data)
                 break;
@@ -794,10 +797,10 @@ class ReceivedMessage{
               case MIDI_MESSAGE_TYPE_TAG:
 
                 if( argument == end )
-                  throw MalformedMessageException( "arguments exceed message size" );
+                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
                 argument += 4;
                 if( argument > end )
-                  throw MalformedMessageException( "arguments exceed message size" );
+                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
                 break;
 
               case INT64_TYPE_TAG:
@@ -805,31 +808,31 @@ class ReceivedMessage{
               case DOUBLE_TYPE_TAG:
 
                 if( argument == end )
-                  throw MalformedMessageException( "arguments exceed message size" );
+                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
                 argument += 8;
                 if( argument > end )
-                  throw MalformedMessageException( "arguments exceed message size" );
+                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
                 break;
 
               case STRING_TYPE_TAG:
               case SYMBOL_TYPE_TAG:
 
                 if( argument == end )
-                  throw MalformedMessageException( "arguments exceed message size" );
+                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
                 argument = FindStr4End( argument, end );
                 if( argument == 0 )
-                  throw MalformedMessageException( "unterminated string argument" );
+                  OSCTAP_THROW( MalformedMessageException( "unterminated string argument" ) );
                 break;
 
               case BLOB_TYPE_TAG:
               {
                 if( argument + osctap::OSC_SIZEOF_INT32 > end )
-                  throw MalformedMessageException( "arguments exceed message size" );
+                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
 
                 // treat blob size as an unsigned int for the purposes of this calculation
                 uint32_t blobSize = ToUInt32( argument );
                 if( !IsValidElementSizeValue( (osc_bundle_element_size_t)blobSize ) )
-                  throw MalformedMessageException( "invalid blob size" );
+                  OSCTAP_THROW( MalformedMessageException( "invalid blob size" ) );
 
                 // Compare sizes rather than advancing the pointer first: a huge
                 // blobSize must not be allowed to overflow the pointer (or RoundUp4)
@@ -837,21 +840,21 @@ class ReceivedMessage{
                 // guaranteed by the check above.
                 const char *blobData = argument + osctap::OSC_SIZEOF_INT32;
                 if( RoundUp4( blobSize ) > (uint32_t)(end - blobData) )
-                  throw MalformedMessageException( "arguments exceed message size" );
+                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
 
                 argument = blobData + RoundUp4( blobSize );
               }
                 break;
 
               default:
-                throw MalformedMessageException( "unknown type tag" );
+                OSCTAP_THROW( MalformedMessageException( "unknown type tag" ) );
             }
 
           }while( *++typeTag != '\0' );
           typeTagsEnd_ = typeTag;
 
           if( arrayLevel !=  0 )
-            throw MalformedMessageException( "array was not terminated before end of message (expected ']' end of array tag)" );
+            OSCTAP_THROW( MalformedMessageException( "array was not terminated before end of message (expected ']' end of array tag)" ) );
         }
 
         // These invariants should be guaranteed by the above code.
@@ -936,6 +939,9 @@ class ReceivedMessage{
     const osc_bundle_element_size_t size_;
 };
 
+#ifndef OSCTAP_FREESTANDING
+// OwnedMessage copies the message into a std::vector. It is hosted-only and
+// excluded from the freestanding profile (no dynamic allocation / no <vector>).
 class OwnedMessage
 {
     explicit OwnedMessage(const ReceivedMessage& other):
@@ -954,19 +960,20 @@ class OwnedMessage
     std::vector<char> buffer_;
     ReceivedMessage message_;
 };
+#endif // OSCTAP_FREESTANDING
 
 class ReceivedBundle{
     void Init( const char *bundle, osc_bundle_element_size_t size )
     {
 
       if( !IsValidElementSizeValue(size) )
-        throw MalformedBundleException( "invalid bundle size" );
+        OSCTAP_THROW( MalformedBundleException( "invalid bundle size" ) );
 
       if( size < 16 )
-        throw MalformedBundleException( "packet too short for bundle" );
+        OSCTAP_THROW( MalformedBundleException( "packet too short for bundle" ) );
 
       if( !IsMultipleOf4(size) )
-        throw MalformedBundleException( "bundle size must be multiple of four" );
+        OSCTAP_THROW( MalformedBundleException( "bundle size must be multiple of four" ) );
 
       if( bundle[0] != '#'
           || bundle[1] != 'b'
@@ -976,7 +983,7 @@ class ReceivedBundle{
           || bundle[5] != 'l'
           || bundle[6] != 'e'
           || bundle[7] != '\0' )
-        throw MalformedBundleException( "bad bundle address pattern" );
+        OSCTAP_THROW( MalformedBundleException( "bad bundle address pattern" ) );
 
       end_ = bundle + size;
 
@@ -986,18 +993,18 @@ class ReceivedBundle{
 
       while( p < end_ ){
         if( p + osctap::OSC_SIZEOF_INT32 > end_ )
-          throw MalformedBundleException( "packet too short for elementSize" );
+          OSCTAP_THROW( MalformedBundleException( "packet too short for elementSize" ) );
 
         // treat element size as an unsigned int for the purposes of this calculation
         uint32_t elementSize = ToUInt32( p );
         if( (elementSize & ((uint32_t)0x03)) != 0 )
-          throw MalformedBundleException( "bundle element size must be multiple of four" );
+          OSCTAP_THROW( MalformedBundleException( "bundle element size must be multiple of four" ) );
 
         // Compare sizes rather than advancing the pointer first, so that a huge
         // elementSize can't overflow the pointer and slip past the bounds check.
         const char *elementData = p + osctap::OSC_SIZEOF_INT32;
         if( elementSize > (uint32_t)(end_ - elementData) )
-          throw MalformedBundleException( "packet too short for bundle element" );
+          OSCTAP_THROW( MalformedBundleException( "packet too short for bundle element" ) );
 
         p = elementData + elementSize;
 
@@ -1005,7 +1012,7 @@ class ReceivedBundle{
       }
 
       if( p != end_ )
-        throw MalformedBundleException( "bundle contents " );
+        OSCTAP_THROW( MalformedBundleException( "bundle contents " ) );
     }
   public:
     explicit ReceivedBundle( const ReceivedPacket& packet )

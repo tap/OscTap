@@ -5,7 +5,9 @@ OscTap is the actively-maintained, security-hardened, modern-C++ continuation of
 document is the source of truth for the rebrand and the work plan. See
 [`docs/HERITAGE.md`](docs/HERITAGE.md) for lineage and credits.
 
-> Status: planning / Phase 0 in progress on branch `claude/oscpack-review-audit-h8n268`.
+> Status: Phase 0 and Phase 1 complete. Phase 2 ("Reach") prep in progress — the
+> freestanding/embedded profile groundwork has landed (see Phase 2 below); the
+> remaining Reach items stay demand-gated.
 
 ## Why OscTap exists
 
@@ -140,10 +142,27 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
 | MSan | optional | later | catches uninitialized-memory reads (cf. the past "uninitialized OSC address bytes" fix); high setup friction (instrumented libc++), so not a standing job. |
 
 ### Phase 2 — Reach (only as demand appears)
-- [ ] QEMU aarch64 / armv7 CI.
-- [ ] Android NDK build.
-- [ ] Freestanding/embedded profile (no exceptions/RTTI option).
-- [ ] Multicast receive (cherry-pick from `stephram/oscpack`).
+- [x] **Freestanding/embedded profile (no exceptions/RTTI option)** — *groundwork
+      landed.* A single build seam (`osc/OscConfig.h`) auto-detects
+      `OSCTAP_HAS_EXCEPTIONS` and routes every core `throw` through `OSCTAP_THROW`
+      (a plain `throw` when exceptions are on; a non-returning, user-overridable
+      fatal handler — `OSCTAP_FATAL_HANDLER`, default `std::abort()` — when they are
+      off). `OSCTAP_FREESTANDING` drops the hosted-only facilities (`<iostream>`, the
+      `std::vector`-backed `OwnedMessage`, the `std::string` `operator<<`). The
+      `OSCTAP_FREESTANDING` CMake option builds `tests/OscFreestandingTest.cpp` with
+      `-fno-exceptions -fno-rtti`; a `freestanding` CI job (GCC + Clang) keeps it
+      green. Hosted builds are byte-for-byte unchanged. **Demand signal: Raspberry
+      Pi Pico 2W (RP2350)** — see [`docs/EMBEDDED_PICO2W.md`](docs/EMBEDDED_PICO2W.md).
+      Deferred: a **non-throwing `TryInit`/validate** entry point so a no-exceptions
+      build can *reject* untrusted packets by returning an error instead of aborting
+      (today, malformed input on an exceptions-off build is fatal — safe only on a
+      trusted link; open networks should keep exceptions on and `catch`).
+- [ ] QEMU aarch64 / armv7 CI. *(Demand-gated — adds standing CI surface; stand up
+      only when a real big-endian/cross target needs it. The freestanding profile
+      already exercises the no-OS code paths without QEMU's cost.)*
+- [ ] Android NDK build. *(Demand-gated — pursue when an Android consumer appears.)*
+- [ ] Multicast receive (cherry-pick from `stephram/oscpack`). *(Self-contained;
+      the next demand-driven feature pickup after the freestanding groundwork.)*
 
 ## Milestones → GitHub
 
