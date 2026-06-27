@@ -68,13 +68,23 @@ Pick the model that matches your threat surface:
    identical either way — `OSCTAP_THROW` is just `throw` here. You still get the
    rest of the embedded posture (no heap on the hot path, small code).
 
+3. **Untrusted / open network, exceptions still off** — gate with the non-throwing
+   validator. `osctap::TryValidatePacket(data, size)` returns `nullptr` when the
+   packet is fully well-formed (and therefore safe to construct and read without any
+   `OSCTAP_THROW` firing), else a static error string. It recurses through bundles
+   with a nesting bound and never throws or allocates, so you can reject bad input
+   on a `-fno-exceptions` build instead of aborting:
+
+   ```cpp
+   if (osctap::TryValidatePacket(buf, n) == nullptr) {
+       osctap::ReceivedMessage m(osctap::ReceivedPacket(buf, n));  // won't abort
+       // ... read m ...
+   } // else: drop the datagram
+   ```
+
 Either way, **validation runs in the lwIP receive callback, off any audio/render
 thread** — consistent with OscTap's realtime contract (validation may throw and
 is not part of the RT hot path; the throw-free `*Unchecked` accessors are).
-
-> Future work (tracked in Phase 2): a non-throwing `TryInit`/validate entry point
-> so a no-exceptions build can *reject* untrusted packets by returning an error
-> instead of aborting. Until then, option 2 is the safe choice for open networks.
 
 ## Build integration (CMake + Pico SDK)
 

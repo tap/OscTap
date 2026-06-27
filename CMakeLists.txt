@@ -48,6 +48,12 @@ if(OSCPACK_BUILD_EXAMPLES)
   target_link_libraries(CompatIncludeShim oscpack)
   add_test(NAME CompatIncludeShim COMMAND CompatIncludeShim)
 
+  # Differential test: the non-throwing TryValidatePacket() gate must agree with
+  # the throwing parse path (single source of truth). See OscValidateTest.cpp.
+  add_executable(OscValidateTest tests/OscValidateTest.cpp)
+  target_link_libraries(OscValidateTest oscpack)
+  add_test(NAME OscValidateTest COMMAND OscValidateTest)
+
   # Realtime-safety test. Runs as a plain functional test of the read/dispatch
   # hot path everywhere (OSCTAP_REALTIME is a no-op off Clang>=20). With
   # -DOSCTAP_RTSAN=ON (Clang>=20) it additionally enforces the realtime contract:
