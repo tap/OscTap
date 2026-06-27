@@ -54,6 +54,21 @@ if(OSCPACK_BUILD_EXAMPLES)
   target_link_libraries(OscValidateTest oscpack)
   add_test(NAME OscValidateTest COMMAND OscValidateTest)
 
+  # Compile/link smoke for the win32 socket backend, which otherwise has no
+  # compiled coverage (the POSIX demos/tests are gated off Windows). Built by the
+  # existing windows-latest CI legs. Warnings-as-errors is deliberately OFF for
+  # this TU (via /WX-, overriding the INTERFACE /WX): it brings the win32 sockets
+  # into the build for the first time, and gating CI on their previously
+  # unexercised /W4 surface is a separate cleanup.
+  if(WIN32)
+    add_executable(Win32SocketSmoke tests/Win32SocketSmoke.cpp)
+    target_link_libraries(Win32SocketSmoke oscpack)
+    if(OSCTAP_WARNINGS_AS_ERRORS)
+      target_compile_options(Win32SocketSmoke PRIVATE /WX-)
+    endif()
+    add_test(NAME Win32SocketSmoke COMMAND Win32SocketSmoke)
+  endif()
+
   # Realtime-safety test. Runs as a plain functional test of the read/dispatch
   # hot path everywhere (OSCTAP_REALTIME is a no-op off Clang>=20). With
   # -DOSCTAP_RTSAN=ON (Clang>=20) it additionally enforces the realtime contract:

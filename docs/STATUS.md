@@ -124,11 +124,16 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   *literals* (the `const char(&)[N]` overload) worked. The fix is freestanding-safe
   (forwards to `string_view`); `OscFreestandingTest` sends a runtime `const char*`
   to guard it. **Don't remove it**, and don't assume `<< somePtr` ever meant bool.
-- **The `ip/` networking layer now has compiled coverage** via the `demos/`
-  (`OSCTAP_BUILD_DEMOS`, POSIX-only) and the `aarch64-qemu` CI job. Previously the
-  POSIX/win32 `UdpSocket`/`NetworkingUtils` backends were header-only-but-uncompiled.
-  The win32 backend and the deferred `strcpy`/`gethostbyname` cleanup (#4) are still
-  not in the compiled surface — fold them in with multicast (#19).
+- **The `ip/` networking layer now has compiled coverage on both platforms.** POSIX
+  via the `demos/` (`OSCTAP_BUILD_DEMOS`) and the `aarch64-qemu` CI job; **win32** via
+  `tests/Win32SocketSmoke.cpp` (a WIN32-gated target the existing windows-latest legs
+  build — it instantiates + links the win32 `UdpSocket`/multiplexer/`getaddrinfo`
+  paths but guards the socket calls off the runtime path, so CI needs no live
+  network). The win32 smoke builds with `/WX-` (warnings-as-errors off for that TU):
+  cleaning the win32 backend's `/W4` surface (and the `timeGetTime` 40-day `FIXME`)
+  to pass `/WX` is the remaining follow-up. It compiles clean under MinGW
+  `-Wall -Wextra`. (The Phase 1 `strcpy`/`gethostbyname` deferral is fully resolved —
+  no occurrences remain in `ip/`.)
 - **`OSCTAP_BUILD_DEMOS` and the `aarch64-qemu` job**: demos are POSIX-only
   (`ip/posix` + a SIGINT handler) and gated `NOT WIN32`. The aarch64 job runs the
   suite under `qemu-user` but **excludes `OscConcurrencyTest`** (emulated threads +
