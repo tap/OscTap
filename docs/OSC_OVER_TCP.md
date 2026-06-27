@@ -117,6 +117,20 @@ Parsing a reassembled packet is the same allocation-free RT read path as for UDP
   `epoll`/`poll` loop for very high connection counts (`select()`/`FD_SETSIZE` is
   fine for a handful of connections).
 
+## Try it (runnable demos)
+
+A server/monitor and a CLI client (`OSCTAP_BUILD_DEMOS`, POSIX), counterparts to
+the UDP `pi5_hub` / `osc_send`:
+
+```sh
+cmake -S . -B build -DOSCTAP_BUILD_DEMOS=ON
+cmake --build build --target tcp_server tcp_send
+
+./build/tcp_server 9000 &                          # prints each received message
+./build/tcp_send 127.0.0.1 9000 /fader/1 f:0.75
+./build/tcp_send 127.0.0.1 9000 /chat s:hello T
+```
+
 ## See also
 
 - [`../osctap/osc/OscStreamFraming.h`](../osctap/osc/OscStreamFraming.h) — the framing codec.
