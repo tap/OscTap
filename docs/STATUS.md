@@ -143,6 +143,18 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   `OscTap.kt`). The bridge is compile-checked against `jni.h` in CI-adjacent dev but
   there is **no NDK build in CI** yet — changes there aren't gated, so keep the
   bridge's OscTap API usage in sync by hand (or add an NDK job when one's warranted).
+- **OSC over TCP lives in `osc/OscStreamFraming.h` + `ip/TcpSocket.h`** (issue #14).
+  The framing codec is transport-agnostic and the **single place** length-prefix
+  framing is defined — the sockets only call it; don't reimplement the length
+  handling in the socket layer. The deframer **caps the frame size** (default 64 KiB)
+  so a hostile prefix can't exhaust memory; keep that guard and the `fuzz_deframe`
+  coverage. Unlike the UDP facade (template-over-`Implementation`), the TCP types are
+  **concrete per-platform classes** (`posix::`/`win32::`) selected by `using` in the
+  facade. **POSIX is runtime-tested** (`OscTcpTest`, POSIX-only like
+  `OscConcurrencyTest`, also under TSan); **win32 is compile/link-verified only**
+  (MinGW + windows-latest legs, no Windows runner) — treat win32 TCP changes as
+  unverified at runtime and lean on the posix backend as the reference. The win32
+  break uses a self-connected loopback UDP socket (no `pipe()` on Windows).
 - **Include guards are named `INCLUDED_OSCTAP_*`** (renamed from `INCLUDED_OSCPACK_*`
   in Phase 2 cleanup). The `<oscpack/...>` *include paths* still work via the redirect
   shim tree — only the internal guard macro names changed.

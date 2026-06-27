@@ -180,6 +180,17 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
       compiled coverage of the `ip/` layer) and an end-to-end tutorial
       ([`docs/INTEGRATION_PI5_PICO_ANDROID.md`](docs/INTEGRATION_PI5_PICO_ANDROID.md))
       tying all three nodes together over OSC/UDP.
+- [x] **OSC over TCP (issue #14)** — *v1 landed.* Length-prefix framing
+      (`osc/OscStreamFraming.h`: encoder + bounded streaming deframer with a
+      frame-size cap, fuzzed via `fuzz/fuzz_deframe.cpp`), and public TCP socket
+      types (`ip/TcpSocket.h`): `TcpTransmitSocket` (client, `TCP_NODELAY`,
+      partial-write loop) and a single-threaded, multi-connection
+      `TcpListeningReceiveSocket` (per-connection deframer → `PacketListener`).
+      POSIX backend is runtime-tested (`OscTcpTest`, a real loopback incl. a
+      segment-spanning message; ASan/UBSan/TSan-clean); the win32 backend mirrors it
+      and is MinGW/Windows-CI compile-verified. See
+      [`docs/OSC_OVER_TCP.md`](docs/OSC_OVER_TCP.md). Deferred: SLIP framing, TLS,
+      WebSocket, `epoll`, and win32 runtime testing.
 - [ ] Multicast receive (cherry-pick from `stephram/oscpack`). *(Self-contained;
       the next demand-driven feature pickup. Note: the `ip/*/UdpSocket.h` backends
       now enter the compiled surface via the demos, so the deferred `strcpy`/
