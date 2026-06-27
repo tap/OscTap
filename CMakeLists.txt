@@ -102,6 +102,18 @@ if(OSCPACK_BUILD_EXAMPLES)
       target_compile_options(OscConcurrencyTest PRIVATE -fsanitize=thread -g)
       target_link_options(OscConcurrencyTest PRIVATE -fsanitize=thread)
     endif()
+
+    # OSC-over-TCP loopback test: real client + multi-connection server, exercising
+    # the deframer through actual sockets (incl. a segment-spanning message). Uses
+    # std::thread + sockets, so POSIX-only for now (like OscConcurrencyTest). Also
+    # runs under the TSan job to vet Run() vs AsynchronousBreak() on the TCP loop.
+    add_executable(OscTcpTest tests/OscTcpTest.cpp)
+    target_link_libraries(OscTcpTest oscpack Threads::Threads)
+    add_test(NAME OscTcpTest COMMAND OscTcpTest)
+    if(OSCTAP_TSAN)
+      target_compile_options(OscTcpTest PRIVATE -fsanitize=thread -g)
+      target_link_options(OscTcpTest PRIVATE -fsanitize=thread)
+    endif()
   endif()
 
   #add_executable(OscSendTests tests/OscSendTests.cpp)
