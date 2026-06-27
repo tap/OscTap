@@ -5,9 +5,10 @@ OscTap is the actively-maintained, security-hardened, modern-C++ continuation of
 document is the source of truth for the rebrand and the work plan. See
 [`docs/HERITAGE.md`](docs/HERITAGE.md) for lineage and credits.
 
-> Status: Phase 0 and Phase 1 complete. Phase 2 ("Reach") prep in progress — the
-> freestanding/embedded profile groundwork has landed (see Phase 2 below); the
-> remaining Reach items stay demand-gated.
+> Status: Phase 0 and Phase 1 complete. Phase 2 ("Reach") underway — freestanding
+> profile, aarch64/Pi 5 CI, and the Pi 5 ⇄ Pico 2W ⇄ Android integration (demos +
+> tutorial + Android JNI bridge) have landed (see Phase 2 below). Remaining:
+> multicast, armv7, and a full Android sample app.
 
 ## Why OscTap exists
 
@@ -157,12 +158,28 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
       build can *reject* untrusted packets by returning an error instead of aborting
       (today, malformed input on an exceptions-off build is fatal — safe only on a
       trusted link; open networks should keep exceptions on and `catch`).
-- [ ] QEMU aarch64 / armv7 CI. *(Demand-gated — adds standing CI surface; stand up
-      only when a real big-endian/cross target needs it. The freestanding profile
-      already exercises the no-OS code paths without QEMU's cost.)*
-- [ ] Android NDK build. *(Demand-gated — pursue when an Android consumer appears.)*
+- [x] **aarch64 (Raspberry Pi 5) CI under QEMU** — *landed.* The `aarch64-qemu` CI
+      job cross-compiles the suite with `aarch64-linux-gnu-g++` and runs it under
+      `qemu-user` (via `CMAKE_CROSSCOMPILING_EMULATOR`), proving the Pi-5-class build
+      green on every push and exercising the endian-agnostic (de)serialization on a
+      non-x86 ISA. `OscConcurrencyTest` is excluded from the emulated run (real
+      threads + loopback sockets are flaky under `qemu-user`; the native TSan/POSIX
+      legs cover it). Deferred: **armv7** (32-bit) and **real-hardware** runners.
+- [x] **Android NDK build** — *groundwork landed.* A JNI bridge (`android/osctap_jni.cpp`)
+      exposes the header-only core to Kotlin (`buildMessage`/`describe`), with an NDK
+      `android/CMakeLists.txt` and a `android/OscTap.kt` facade (JVM UDP transport).
+      The bridge is compile-verified against `jni.h` + the core. Deferred: a full
+      Gradle sample app and optional NDK CI (needs the NDK image; weigh against the
+      standing-surface caution).
+- [x] **Pi 5 ⇄ Pico 2W ⇄ Android integration** — runnable Pi 5 hub/router + CLI
+      sender demos (`demos/`, `OSCTAP_BUILD_DEMOS`, POSIX sockets — the first
+      compiled coverage of the `ip/` layer) and an end-to-end tutorial
+      ([`docs/INTEGRATION_PI5_PICO_ANDROID.md`](docs/INTEGRATION_PI5_PICO_ANDROID.md))
+      tying all three nodes together over OSC/UDP.
 - [ ] Multicast receive (cherry-pick from `stephram/oscpack`). *(Self-contained;
-      the next demand-driven feature pickup after the freestanding groundwork.)*
+      the next demand-driven feature pickup. Note: the `ip/*/UdpSocket.h` backends
+      now enter the compiled surface via the demos, so the deferred `strcpy`/
+      `gethostbyname` cleanup from Phase 1 #4 can ride along here.)*
 
 ## Milestones → GitHub
 

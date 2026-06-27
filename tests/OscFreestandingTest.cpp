@@ -37,9 +37,11 @@ int main()
 {
     // --- serialize a message on the stack (no heap) ------------------------
     char buffer[256];
+    const char* runtimeStr = "pico";   // a runtime const char* (not a literal):
+                                        // must serialize as a string, not a bool.
     osctap::OutboundPacketStream p( buffer, sizeof(buffer) );
     p << osctap::BeginMessage( "/freestanding" )
-        << true << (int32_t)2350 << (float)3.14159f << "pico"
+        << true << (int32_t)2350 << (float)3.14159f << runtimeStr
       << osctap::EndMessage();
 
     CHECK( p.IsReady() );
