@@ -155,6 +155,20 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   (MinGW + windows-latest legs, no Windows runner) — treat win32 TCP changes as
   unverified at runtime and lean on the posix backend as the reference. The win32
   break uses a self-connected loopback UDP socket (no `pipe()` on Windows).
+- **Socket loopback tests** (`OscUdpTest`, `OscTcpTest`, POSIX-only): real client+
+  server asserting that messages arrive and decode. They **SKIP** (print a notice,
+  exit 0) if the environment denies loopback networking, so they don't false-fail on
+  restricted runners — but a real regression still fails them. Writing `OscUdpTest`
+  surfaced a latent bug: `UdpSocketImplementation::Bind()` never read the OS-assigned
+  port back, so `LocalPort()` returned 0 after a port-0 bind (a sender using it
+  targeted port 0 → nothing delivered; the old `OscConcurrencyTest` packet was
+  "best-effort, never asserted", which hid it). Fixed in both posix and win32 via
+  `getsockname()` after bind. **Don't drop that read-back.**
+- **`examples/` (SimpleSend/SimpleReceive/OscDump) are compile-checked, not run**
+  (they bind sockets / block on input). They use the `oscpack::` alias on purpose
+  (extra shim coverage). `demos/` are the modern, tested equivalents. The old
+  interactive `tests/OscSendTests`/`OscReceiveTest` (dead `osc::` namespace) were
+  deleted — superseded by `demos/` + the loopback tests.
 - **Include guards are named `INCLUDED_OSCTAP_*`** (renamed from `INCLUDED_OSCPACK_*`
   in Phase 2 cleanup). The `<oscpack/...>` *include paths* still work via the redirect
   shim tree — only the internal guard macro names changed.

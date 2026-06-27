@@ -103,33 +103,33 @@ if(OSCPACK_BUILD_EXAMPLES)
       target_link_options(OscConcurrencyTest PRIVATE -fsanitize=thread)
     endif()
 
-    # OSC-over-TCP loopback test: real client + multi-connection server, exercising
-    # the deframer through actual sockets (incl. a segment-spanning message). Uses
-    # std::thread + sockets, so POSIX-only for now (like OscConcurrencyTest). Also
-    # runs under the TSan job to vet Run() vs AsynchronousBreak() on the TCP loop.
-    add_executable(OscTcpTest tests/OscTcpTest.cpp)
-    target_link_libraries(OscTcpTest oscpack Threads::Threads)
-    add_test(NAME OscTcpTest COMMAND OscTcpTest)
-    if(OSCTAP_TSAN)
-      target_compile_options(OscTcpTest PRIVATE -fsanitize=thread -g)
-      target_link_options(OscTcpTest PRIVATE -fsanitize=thread)
-    endif()
+    # OSC-over-UDP and OSC-over-TCP loopback tests: real socket client + server,
+    # asserting that messages arrive and decode correctly (the TCP one also spans
+    # TCP segments to exercise deframer reassembly). Both SKIP gracefully if the
+    # environment forbids loopback networking. POSIX-only (std::thread + sockets);
+    # also built under the TSan job to vet Run() vs AsynchronousBreak().
+    foreach(socktest OscUdpTest OscTcpTest)
+      add_executable(${socktest} tests/${socktest}.cpp)
+      target_link_libraries(${socktest} oscpack Threads::Threads)
+      add_test(NAME ${socktest} COMMAND ${socktest})
+      if(OSCTAP_TSAN)
+        target_compile_options(${socktest} PRIVATE -fsanitize=thread -g)
+        target_link_options(${socktest} PRIVATE -fsanitize=thread)
+      endif()
+    endforeach()
   endif()
 
-  #add_executable(OscSendTests tests/OscSendTests.cpp)
-  #target_link_libraries(OscSendTests oscpack)
+  # Canonical oscpack examples, compile-checked so they can't bit-rot (they use
+  # the deprecated oscpack:: alias on purpose). Not run -- they bind sockets /
+  # block on input; see demos/ for the modern, tested equivalents.
+  add_executable(SimpleSend examples/SimpleSend.cpp)
+  target_link_libraries(SimpleSend oscpack)
 
-  #add_executable(OscReceiveTest tests/OscReceiveTest.cpp)
-  #target_link_libraries(OscReceiveTest oscpack)
+  add_executable(SimpleReceive examples/SimpleReceive.cpp)
+  target_link_libraries(SimpleReceive oscpack)
 
-  #add_executable(OscDump examples/OscDump.cpp)
-  #target_link_libraries(OscDump oscpack)
-
-  #add_executable(SimpleReceive examples/SimpleReceive.cpp)
-  #target_link_libraries(SimpleReceive oscpack)
-
-  #add_executable(SimpleSend examples/SimpleSend.cpp)
-  #target_link_libraries(SimpleSend oscpack)
+  add_executable(OscDump examples/OscDump.cpp)
+  target_link_libraries(OscDump oscpack)
 endif()
 
 # Freestanding / embedded profile (Phase 2 "Reach"). Builds a single smoke test

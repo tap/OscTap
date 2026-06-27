@@ -234,6 +234,14 @@ public:
         }
 
         isBound_ = true;
+
+        // Read back the actual local port. When the caller binds to port 0 the OS
+        // assigns one; without this LocalPort() would still report 0 (so a sender
+        // using LocalPort() would target port 0 and nothing would be delivered).
+        struct sockaddr_in boundAddr;
+        socklen_t boundLen = sizeof(boundAddr);
+        if( getsockname( socket_, (struct sockaddr *)&boundAddr, &boundLen ) == 0 )
+            localPort_ = ntohs( boundAddr.sin_port );
     }
 
     bool IsBound() const { return isBound_; }
