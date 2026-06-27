@@ -117,22 +117,34 @@ class ReceivedPacket{
     osc_bundle_element_size_t Size() const { return size_; }
     const char *Contents() const { return contents_; }
 
+    // Non-throwing size validation: returns nullptr if `size` is an acceptable
+    // packet/element size, else a static error string. The single source of the
+    // size rules, shared by the throwing ValidateSize() and the non-throwing
+    // TryValidatePacket().
+    static const char* ValidateSizeNoThrow( osc_bundle_element_size_t size )
+    {
+      // sanity check integer types declared in OscTypes.h
+      // you'll need to fix OscTypes.h if any of these asserts fail
+      if( !IsValidElementSizeValue(size) )
+        return "invalid packet size";
+
+      if( size == 0 )
+        return "zero length elements not permitted";
+
+      if( !IsMultipleOf4(size) )
+        return "element size must be multiple of four";
+
+      return nullptr;
+    }
+
   private:
     const char *contents_;
     osc_bundle_element_size_t size_;
 
     static osc_bundle_element_size_t ValidateSize( osc_bundle_element_size_t size )
     {
-      // sanity check integer types declared in OscTypes.h
-      // you'll need to fix OscTypes.h if any of these asserts fail
-      if( !IsValidElementSizeValue(size) )
-        OSCTAP_THROW( MalformedPacketException( "invalid packet size" ) );
-
-      if( size == 0 )
-        OSCTAP_THROW( MalformedPacketException( "zero length elements not permitted" ) );
-
-      if( !IsMultipleOf4(size) )
-        OSCTAP_THROW( MalformedPacketException( "element size must be multiple of four" ) );
+      if( const char* err = ValidateSizeNoThrow( size ) )
+        OSCTAP_THROW( MalformedPacketException( err ) );
 
       return size;
     }
@@ -717,23 +729,35 @@ class ReceivedMessageArgumentStream{
 
 
 class ReceivedMessage{
-    void Init( const char *message, osc_bundle_element_size_t size )
+  public:
+    // Non-throwing parse + structural validation. Sets all boundary members and
+    // returns nullptr on success, or a static error string on malformed input.
+    // Use on no-exceptions / untrusted-input paths:
+    //     ReceivedMessage m;
+    //     if( m.TryInit(data, size) == nullptr ) { /* read m */ }
+    // This is the single source of truth: the throwing Init() below delegates
+    // here, as does the non-throwing Validate() / TryValidatePacket() gate for
+    // untrusted input on no-exceptions builds.
+    const char* TryInit( const char *message, osc_bundle_element_size_t size )
     {
+      addressPattern_ = message;
+      size_ = size;
+
       if( !IsValidElementSizeValue(size) )
-        OSCTAP_THROW( MalformedMessageException( "invalid message size" ) );
+        return "invalid message size";
 
       if( size == 0 )
-        OSCTAP_THROW( MalformedMessageException( "zero length messages not permitted" ) );
+        return "zero length messages not permitted";
 
       if( !IsMultipleOf4(size) )
-        OSCTAP_THROW( MalformedMessageException( "message size must be multiple of four" ) );
+        return "message size must be multiple of four";
 
       const char *end = message + size;
 
       typeTagsBegin_ = FindStr4End( addressPattern_, end );
       if( typeTagsBegin_ == 0 ){
         // address pattern was not terminated before end
-        OSCTAP_THROW( MalformedMessageException( "unterminated address pattern" ) );
+        return "unterminated address pattern";
       }
 
       if( typeTagsBegin_ == end ){
@@ -744,7 +768,7 @@ class ReceivedMessage{
 
       }else{
         if( *typeTagsBegin_ != ',' )
-          OSCTAP_THROW( MalformedMessageException( "type tags not present" ) );
+          return "type tags not present";
 
         if( *(typeTagsBegin_ + 1) == '\0' ){
           // zero length type tags
@@ -757,7 +781,7 @@ class ReceivedMessage{
 
           arguments_ = FindStr4End( typeTagsBegin_, end );
           if( arguments_ == 0 ){
-            OSCTAP_THROW( MalformedMessageException( "type tags were not terminated before end of message" ) );
+            return "type tags were not terminated before end of message";
           }
 
           ++typeTagsBegin_; // advance past initial ','
@@ -785,7 +809,7 @@ class ReceivedMessage{
 
               case ARRAY_END_TYPE_TAG:
                 if( arrayLevel == 0 )
-                  OSCTAP_THROW( MalformedMessageException( "array close tag ']' without matching open tag '['" ) );
+                  return "array close tag ']' without matching open tag '['";
                 --arrayLevel;
                 // (zero length argument data)
                 break;
@@ -797,10 +821,10 @@ class ReceivedMessage{
               case MIDI_MESSAGE_TYPE_TAG:
 
                 if( argument == end )
-                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
+                  return "arguments exceed message size";
                 argument += 4;
                 if( argument > end )
-                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
+                  return "arguments exceed message size";
                 break;
 
               case INT64_TYPE_TAG:
@@ -808,31 +832,31 @@ class ReceivedMessage{
               case DOUBLE_TYPE_TAG:
 
                 if( argument == end )
-                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
+                  return "arguments exceed message size";
                 argument += 8;
                 if( argument > end )
-                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
+                  return "arguments exceed message size";
                 break;
 
               case STRING_TYPE_TAG:
               case SYMBOL_TYPE_TAG:
 
                 if( argument == end )
-                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
+                  return "arguments exceed message size";
                 argument = FindStr4End( argument, end );
                 if( argument == 0 )
-                  OSCTAP_THROW( MalformedMessageException( "unterminated string argument" ) );
+                  return "unterminated string argument";
                 break;
 
               case BLOB_TYPE_TAG:
               {
                 if( argument + osctap::OSC_SIZEOF_INT32 > end )
-                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
+                  return "arguments exceed message size";
 
                 // treat blob size as an unsigned int for the purposes of this calculation
                 uint32_t blobSize = ToUInt32( argument );
                 if( !IsValidElementSizeValue( (osc_bundle_element_size_t)blobSize ) )
-                  OSCTAP_THROW( MalformedMessageException( "invalid blob size" ) );
+                  return "invalid blob size";
 
                 // Compare sizes rather than advancing the pointer first: a huge
                 // blobSize must not be allowed to overflow the pointer (or RoundUp4)
@@ -840,21 +864,21 @@ class ReceivedMessage{
                 // guaranteed by the check above.
                 const char *blobData = argument + osctap::OSC_SIZEOF_INT32;
                 if( RoundUp4( blobSize ) > (uint32_t)(end - blobData) )
-                  OSCTAP_THROW( MalformedMessageException( "arguments exceed message size" ) );
+                  return "arguments exceed message size";
 
                 argument = blobData + RoundUp4( blobSize );
               }
                 break;
 
               default:
-                OSCTAP_THROW( MalformedMessageException( "unknown type tag" ) );
+                return "unknown type tag";
             }
 
           }while( *++typeTag != '\0' );
           typeTagsEnd_ = typeTag;
 
           if( arrayLevel !=  0 )
-            OSCTAP_THROW( MalformedMessageException( "array was not terminated before end of message (expected ']' end of array tag)" ) );
+            return "array was not terminated before end of message (expected ']' end of array tag)";
         }
 
         // These invariants should be guaranteed by the above code.
@@ -865,8 +889,23 @@ class ReceivedMessage{
         assert( argumentCount <= OSC_INT32_MAX );
 #endif
       }
+
+      return nullptr;
+    }
+
+    // Throwing wrapper used by the constructors (preserves the original API).
+    void Init( const char *message, osc_bundle_element_size_t size )
+    {
+      if( const char* err = TryInit( message, size ) )
+        OSCTAP_THROW( MalformedMessageException( err ) );
     }
   public:
+    // Default-constructs an empty (invalid) message for use with the non-throwing
+    // TryInit() below. Reading it before a successful TryInit() is undefined.
+    ReceivedMessage()
+      : addressPattern_( nullptr ), typeTagsBegin_( nullptr )
+      , typeTagsEnd_( nullptr ), arguments_( nullptr ), size_( 0 ) {}
+
     explicit ReceivedMessage( const ReceivedPacket& packet )
       : addressPattern_( packet.Contents() ), size_{packet.Size()}
     {
@@ -876,6 +915,14 @@ class ReceivedMessage{
       : addressPattern_( bundleElement.Contents() ), size_{bundleElement.Size()}
     {
       Init( bundleElement.Contents(), bundleElement.Size() );
+    }
+
+    // Non-throwing structural validation of a message body, without retaining the
+    // parsed object. nullptr == well-formed.
+    static const char* Validate( const char *message, osc_bundle_element_size_t size )
+    {
+      ReceivedMessage m;
+      return m.TryInit( message, size );
     }
     const char *AddressPattern() const OSCTAP_REALTIME { return addressPattern_; }
 
@@ -936,7 +983,7 @@ class ReceivedMessage{
     const char *typeTagsBegin_;
     const char *typeTagsEnd_;
     const char *arguments_;
-    const osc_bundle_element_size_t size_;
+    osc_bundle_element_size_t size_; // not const: TryInit() (re)assigns during parse
 };
 
 #ifndef OSCTAP_FREESTANDING
@@ -963,17 +1010,25 @@ class OwnedMessage
 #endif // OSCTAP_FREESTANDING
 
 class ReceivedBundle{
-    void Init( const char *bundle, osc_bundle_element_size_t size )
+  public:
+    // Non-throwing parse + structural validation of the bundle framing (size,
+    // "#bundle" tag, and element-size table). Returns nullptr on success (members
+    // set), or a static error string. Single source of truth; the throwing Init()
+    // delegates here. Note: this validates the bundle's own framing, not the
+    // contents of each element -- use TryValidatePacket() for a full recursive
+    // check before reading untrusted bundles on a no-exceptions build.
+    const char* TryInit( const char *bundle, osc_bundle_element_size_t size )
     {
+      elementCount_ = 0;
 
       if( !IsValidElementSizeValue(size) )
-        OSCTAP_THROW( MalformedBundleException( "invalid bundle size" ) );
+        return "invalid bundle size";
 
       if( size < 16 )
-        OSCTAP_THROW( MalformedBundleException( "packet too short for bundle" ) );
+        return "packet too short for bundle";
 
       if( !IsMultipleOf4(size) )
-        OSCTAP_THROW( MalformedBundleException( "bundle size must be multiple of four" ) );
+        return "bundle size must be multiple of four";
 
       if( bundle[0] != '#'
           || bundle[1] != 'b'
@@ -983,7 +1038,7 @@ class ReceivedBundle{
           || bundle[5] != 'l'
           || bundle[6] != 'e'
           || bundle[7] != '\0' )
-        OSCTAP_THROW( MalformedBundleException( "bad bundle address pattern" ) );
+        return "bad bundle address pattern";
 
       end_ = bundle + size;
 
@@ -993,18 +1048,18 @@ class ReceivedBundle{
 
       while( p < end_ ){
         if( p + osctap::OSC_SIZEOF_INT32 > end_ )
-          OSCTAP_THROW( MalformedBundleException( "packet too short for elementSize" ) );
+          return "packet too short for elementSize";
 
         // treat element size as an unsigned int for the purposes of this calculation
         uint32_t elementSize = ToUInt32( p );
         if( (elementSize & ((uint32_t)0x03)) != 0 )
-          OSCTAP_THROW( MalformedBundleException( "bundle element size must be multiple of four" ) );
+          return "bundle element size must be multiple of four";
 
         // Compare sizes rather than advancing the pointer first, so that a huge
         // elementSize can't overflow the pointer and slip past the bounds check.
         const char *elementData = p + osctap::OSC_SIZEOF_INT32;
         if( elementSize > (uint32_t)(end_ - elementData) )
-          OSCTAP_THROW( MalformedBundleException( "packet too short for bundle element" ) );
+          return "packet too short for bundle element";
 
         p = elementData + elementSize;
 
@@ -1012,9 +1067,22 @@ class ReceivedBundle{
       }
 
       if( p != end_ )
-        OSCTAP_THROW( MalformedBundleException( "bundle contents " ) );
+        return "bundle contents ";
+
+      return nullptr;
     }
-  public:
+
+    // Throwing wrapper used by the constructors (preserves the original API).
+    void Init( const char *bundle, osc_bundle_element_size_t size )
+    {
+      if( const char* err = TryInit( bundle, size ) )
+        OSCTAP_THROW( MalformedBundleException( err ) );
+    }
+
+    // Default-constructs an empty (invalid) bundle for use with TryInit().
+    ReceivedBundle()
+      : timeTag_( nullptr ), end_( nullptr ), elementCount_( 0 ) {}
+
     explicit ReceivedBundle( const ReceivedPacket& packet )
       : elementCount_( 0 )
     {
@@ -1024,6 +1092,14 @@ class ReceivedBundle{
       : elementCount_( 0 )
     {
       Init( bundleElement.Contents(), bundleElement.Size() );
+    }
+
+    // Non-throwing structural validation of the bundle framing, without retaining
+    // the parsed object. nullptr == well-formed framing.
+    static const char* Validate( const char *bundle, osc_bundle_element_size_t size )
+    {
+      ReceivedBundle b;
+      return b.TryInit( bundle, size );
     }
 
     uint64_t TimeTag() const
@@ -1060,6 +1136,56 @@ inline auto begin(const osctap::ReceivedMessage& mes)
 inline auto end(const osctap::ReceivedMessage& mes)
 {
   return mes.ArgumentsEnd();
+}
+
+
+// Non-throwing, recursive validation of a complete OSC packet -- a message, or a
+// bundle whose every element is itself well-formed, recursively. Returns nullptr
+// if [data, data+size) is fully well-formed and therefore safe to construct *and
+// read in full* without any OSCTAP_THROW firing; otherwise a static error string.
+//
+// This is the gate to use before handling untrusted input on a no-exceptions /
+// freestanding build, where a malformed packet would otherwise hit the fatal
+// handler (abort) during construction or iteration:
+//
+//     if( osctap::TryValidatePacket(buf, n) == nullptr ) {
+//         osctap::ReceivedPacket p(buf, n);          // won't abort
+//         ... read the message / iterate the bundle ...
+//     } else {
+//         ... drop the datagram ...
+//     }
+//
+// maxBundleNestingDepth bounds the recursion so a deeply-nested bundle from an
+// attacker cannot exhaust the stack (mirrors OscPacketListener's dispatch bound).
+inline const char* TryValidatePacket( const char *data, osc_bundle_element_size_t size,
+                                      unsigned int maxBundleNestingDepth = 64 )
+{
+  if( const char* err = ReceivedPacket::ValidateSizeNoThrow( size ) )
+    return err;
+
+  if( size > 0 && data[0] == '#' ){
+    // Bundle: validate the framing, then recurse into each element's contents.
+    if( const char* err = ReceivedBundle::Validate( data, size ) )
+      return err;
+    if( maxBundleNestingDepth == 0 )
+      return "bundle nested too deeply";
+
+    const char *end = data + size;
+    const char *p = data + 16; // skip "#bundle\0" (8) + time tag (8)
+    while( p < end ){
+      // Framing was validated above: elementSize is multiple-of-4 and in bounds.
+      uint32_t elementSize = ToUInt32( p );
+      const char *elementData = p + osctap::OSC_SIZEOF_INT32;
+      if( const char* err = TryValidatePacket( elementData,
+              (osc_bundle_element_size_t)elementSize, maxBundleNestingDepth - 1 ) )
+        return err;
+      p = elementData + elementSize;
+    }
+    return nullptr;
+  }
+
+  // Message.
+  return ReceivedMessage::Validate( data, size );
 }
 
 } // namespace osctap

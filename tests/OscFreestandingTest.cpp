@@ -70,6 +70,25 @@ int main()
     CHECK( arg->AsFloatUnchecked() > 3.14f );         ++arg;
     CHECK( std::strcmp( arg->AsStringUnchecked(), "pico" ) == 0 );
 
+    // --- non-throwing validation gate (the point of TryInit/TryValidatePacket) ---
+    // On this build OSCTAP_THROW would abort via the fatal handler, so the only
+    // safe way to handle untrusted input is to gate it first. Reaching these lines
+    // at all proves the gate returns instead of throwing/aborting.
+    typedef osctap::osc_bundle_element_size_t sz_t;
+    CHECK( osctap::TryValidatePacket( p.Data(), (sz_t)p.Size() ) == nullptr ); // valid -> accepted
+
+    // truncate the valid message by one 4-byte word: arguments now exceed size.
+    CHECK( osctap::TryValidatePacket( p.Data(), (sz_t)(p.Size() - 4) ) != nullptr );
+
+    // structurally bogus little buffer (not a valid message): rejected, not fatal.
+    const char bad[6] = { '/', 'x', '\0', '\0', ',', 'i' };
+    CHECK( osctap::TryValidatePacket( bad, (sz_t)sizeof(bad) ) != nullptr );
+
+    // The same gate also drives a no-abort ReceivedMessage parse:
+    osctap::ReceivedMessage probe;
+    CHECK( probe.TryInit( p.Data(), (sz_t)p.Size() ) == nullptr );
+    CHECK( std::strcmp( probe.AddressPattern(), "/freestanding" ) == 0 );
+
     if( failures == 0 )
         std::printf( "OscFreestandingTest: OK (exceptions disabled, freestanding)\n" );
     return failures == 0 ? 0 : 1;

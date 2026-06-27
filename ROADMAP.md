@@ -154,10 +154,14 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
       `-fno-exceptions -fno-rtti`; a `freestanding` CI job (GCC + Clang) keeps it
       green. Hosted builds are byte-for-byte unchanged. **Demand signal: Raspberry
       Pi Pico 2W (RP2350)** — see [`docs/EMBEDDED_PICO2W.md`](docs/EMBEDDED_PICO2W.md).
-      Deferred: a **non-throwing `TryInit`/validate** entry point so a no-exceptions
-      build can *reject* untrusted packets by returning an error instead of aborting
-      (today, malformed input on an exceptions-off build is fatal — safe only on a
-      trusted link; open networks should keep exceptions on and `catch`).
+      **Non-throwing `TryInit`/validate landed**: `ReceivedMessage::TryInit` /
+      `ReceivedBundle::TryInit` and the recursive `TryValidatePacket()` gate return a
+      status (static error string, `nullptr` == valid) instead of throwing, so a
+      no-exceptions build can *reject* untrusted packets rather than abort. Built from
+      a single source of truth — the throwing constructors delegate to the same
+      validators — and guarded by `OscValidateTest` (differential vs. the throwing
+      path) plus a freestanding-build check that malformed input returns instead of
+      aborting.
 - [x] **aarch64 (Raspberry Pi 5) CI under QEMU** — *landed.* The `aarch64-qemu` CI
       job cross-compiles the suite with `aarch64-linux-gnu-g++` and runs it under
       `qemu-user` (via `CMAKE_CROSSCOMPILING_EMULATOR`), proving the Pi-5-class build

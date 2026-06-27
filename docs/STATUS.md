@@ -104,11 +104,19 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   or it will break the `freestanding` job. The freestanding flags are **PRIVATE to
   the `OscFreestandingTest` target**, so the exception-based tests are unaffected.
   Embedded posture and the Pico 2W recipe live in `docs/EMBEDDED_PICO2W.md`.
-- **Untrusted input on a no-exceptions build is fatal.** The parser validates by
-  throwing; with exceptions off there is nothing to catch, so a malformed packet
-  hits the fatal handler (a remote reset/DoS). Safe only on a trusted link; open
-  networks should keep exceptions on and `catch` the `Malformed*Exception` types. A
-  non-throwing `TryInit`/validate is the tracked Phase 2 follow-up.
+- **Untrusted input on a no-exceptions build: gate it with `TryValidatePacket()`.**
+  The parser validates by throwing, and with exceptions off `OSCTAP_THROW` aborts —
+  so on a freestanding/no-exceptions build, call `osctap::TryValidatePacket(data, size)`
+  (returns `nullptr` when fully well-formed, else a static error string) before
+  constructing/reading; it recurses through bundles with a nesting bound and never
+  throws/allocates. `ReceivedMessage::TryInit`/`ReceivedBundle::TryInit` are the
+  per-element non-throwing parses. **These are the single source of truth** — the
+  throwing `Init()`/constructors delegate to them (`Init` = `TryInit` + `OSCTAP_THROW`
+  on the returned error), so **don't fork the validation logic**: edit `TryInit` and
+  both paths stay in lock-step. `OscValidateTest` is the differential guard (gate vs.
+  throwing path) and must stay green. Note `ReceivedMessage::size_` is no longer
+  `const` (TryInit assigns it) and both classes gained a default ctor for the
+  default-construct-then-`TryInit` pattern.
 - **A runtime `const char*` now serializes as an OSC string**, via a dedicated
   `OutboundPacketStream::operator<<(const char*)`. Before, a `const char*` bound to
   `operator<<(bool)` (standard pointer→bool conversion outranks the user-defined
