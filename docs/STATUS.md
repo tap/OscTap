@@ -130,7 +130,12 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   `OscTap.kt`). The bridge is compile-checked against `jni.h` in CI-adjacent dev but
   there is **no NDK build in CI** yet — changes there aren't gated, so keep the
   bridge's OscTap API usage in sync by hand (or add an NDK job when one's warranted).
-- **Include guards are still named `INCLUDED_OSCPACK_*`** — cosmetic, left as-is.
+- **Include guards are named `INCLUDED_OSCTAP_*`** (renamed from `INCLUDED_OSCPACK_*`
+  in Phase 2 cleanup). The `<oscpack/...>` *include paths* still work via the redirect
+  shim tree — only the internal guard macro names changed.
+- **`osc/SmallString.h` is an intentionally-empty, guarded no-op** (audit #6 closed).
+  The outbound stream no longer includes it; it's kept only so the public path and its
+  `<oscpack/...>` shim keep resolving. Don't "fill it in" without a real need.
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with
   `ASAN_OPTIONS=detect_leaks=0`. (Cleaning this up is a fine low-priority task.)

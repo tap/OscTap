@@ -34,8 +34,8 @@
   requested that these non-binding requests be included whenever the
   above license is reproduced.
 */
-#ifndef INCLUDED_OSCPACK_OSCRECEIVEDELEMENTS_H
-#define INCLUDED_OSCPACK_OSCRECEIVEDELEMENTS_H
+#ifndef INCLUDED_OSCTAP_OSCRECEIVEDELEMENTS_H
+#define INCLUDED_OSCTAP_OSCRECEIVEDELEMENTS_H
 
 #include <cassert>
 #include <cstddef>
@@ -1070,4 +1070,4 @@ inline auto end(const osctap::ReceivedMessage& mes)
 // Existing code that uses the oscpack:: namespace continues to compile.
 namespace oscpack = osctap;
 
-#endif /* INCLUDED_OSCPACK_OSCRECEIVEDELEMENTS_H */
+#endif /* INCLUDED_OSCTAP_OSCRECEIVEDELEMENTS_H */

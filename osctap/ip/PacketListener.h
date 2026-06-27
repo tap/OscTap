@@ -34,8 +34,8 @@
   requested that these non-binding requests be included whenever the
   above license is reproduced.
 */
-#ifndef INCLUDED_OSCPACK_PACKETLISTENER_H
-#define INCLUDED_OSCPACK_PACKETLISTENER_H
+#ifndef INCLUDED_OSCTAP_PACKETLISTENER_H
+#define INCLUDED_OSCTAP_PACKETLISTENER_H
 
 namespace osctap
 {
@@ -53,4 +53,4 @@ class PacketListener{
 // Existing code that uses the oscpack:: namespace continues to compile.
 namespace oscpack = osctap;
 
-#endif /* INCLUDED_OSCPACK_PACKETLISTENER_H */
+#endif /* INCLUDED_OSCTAP_PACKETLISTENER_H */
