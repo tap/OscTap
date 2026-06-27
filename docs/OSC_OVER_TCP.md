@@ -111,8 +111,9 @@ Parsing a reassembled packet is the same allocation-free RT read path as for UDP
 - **POSIX is the runtime-verified backend** (`tests/OscTcpTest.cpp` exercises a
   real loopback client+server, including a message that spans TCP segments, and is
   clean under ASan/UBSan and TSan).
-- **Windows** (`ip/win32/TcpSocket.h`) mirrors it on Winsock and is compile/link-
-  verified (MinGW + the windows-latest CI legs) but not yet runtime-tested in CI.
+- **Windows** (`ip/win32/TcpSocket.h`) mirrors it on Winsock and is **runtime-tested**
+  via the `win32-wine` CI job (MinGW cross-compile + Wine), in addition to the
+  compile/link checks on the windows-latest legs.
 - Deferred to a future version: SLIP framing, TLS, WebSocket transport, and an
   `epoll`/`poll` loop for very high connection counts (`select()`/`FD_SETSIZE` is
   fine for a handful of connections).
