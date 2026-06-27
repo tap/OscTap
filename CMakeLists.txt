@@ -161,6 +161,14 @@ if(OSCTAP_BUILD_DEMOS AND NOT WIN32)
 
   add_executable(osc_send demos/osc_send.cpp)
   target_link_libraries(osc_send oscpack)
+
+  # OSC-over-TCP demo pair (see docs/OSC_OVER_TCP.md): a server/monitor and a
+  # CLI client, counterparts to pi5_hub / osc_send.
+  add_executable(tcp_server demos/tcp_server.cpp)
+  target_link_libraries(tcp_server oscpack)
+
+  add_executable(tcp_send demos/tcp_send.cpp)
+  target_link_libraries(tcp_send oscpack)
 endif()
 
 set(OSCTAP_BUILD_FUZZERS OFF CACHE BOOL "Build the libFuzzer fuzz target (requires Clang)")
