@@ -151,10 +151,13 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   coverage. Unlike the UDP facade (template-over-`Implementation`), the TCP types are
   **concrete per-platform classes** (`posix::`/`win32::`) selected by `using` in the
   facade. **POSIX is runtime-tested** (`OscTcpTest`, POSIX-only like
-  `OscConcurrencyTest`, also under TSan); **win32 is compile/link-verified only**
-  (MinGW + windows-latest legs, no Windows runner) — treat win32 TCP changes as
-  unverified at runtime and lean on the posix backend as the reference. The win32
-  break uses a self-connected loopback UDP socket (no `pipe()` on Windows).
+  `OscConcurrencyTest`, also under TSan). **win32 is now runtime-tested too** via the
+  `win32-wine` CI job: it cross-compiles `OscUdpTest`/`OscTcpTest` with MinGW and runs
+  them under Wine (both pass), so the win32 UDP **and** TCP backends have real runtime
+  coverage, not just compile/link. The win32 break uses a self-connected loopback UDP
+  socket (no `pipe()` on Windows). NB the TCP backend headers must be **self-contained**
+  (they `#include <osctap/ip/IpEndpointName.h>` explicitly) — including `TcpSocket.h`
+  without `UdpSocket.h` first previously failed on win32; the Wine job guards that.
 - **Socket loopback tests** (`OscUdpTest`, `OscTcpTest`, POSIX-only): real client+
   server asserting that messages arrive and decode. They **SKIP** (print a notice,
   exit 0) if the environment denies loopback networking, so they don't false-fail on

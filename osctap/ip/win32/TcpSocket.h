@@ -29,6 +29,7 @@
 // Reuse the win32 socket includes, NetworkInitializer (WSAStartup), and the
 // SockaddrFromIpEndpointName / IpEndpointNameFromSockaddr helpers from the UDP
 // backend.
+#include <osctap/ip/IpEndpointName.h> // complete type before the helpers below use it
 #include <osctap/ip/win32/UdpSocket.h>
 #include <osctap/ip/PacketListener.h>
 #include <osctap/osc/OscStreamFraming.h>

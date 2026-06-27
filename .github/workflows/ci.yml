@@ -171,6 +171,42 @@ jobs:
       - name: Run suite under qemu
         run: ctest --test-dir build-aarch64 -E OscConcurrencyTest --output-on-failure
 
+  win32-wine:
+    name: win32 sockets runtime (MinGW + Wine)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The win32 socket backends are otherwise only compile-checked (the MSVC
+      # legs + the MinGW smoke). Here we cross-compile the real socket loopback
+      # tests for win32 and run them under Wine, so the win32 UDP + TCP backends
+      # get actual runtime coverage on every push.
+      - name: Install MinGW-w64 + Wine
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y g++-mingw-w64-x86-64 wine64 wine
+
+      - name: Cross-compile the socket loopback tests for win32
+        run: |
+          for t in OscUdpTest OscTcpTest; do
+            x86_64-w64-mingw32-g++ -std=c++17 -O1 -static -I . -I osctap \
+              tests/$t.cpp -o $t.exe -lws2_32 -lwinmm
+          done
+
+      - name: Run under Wine
+        env:
+          WINEPREFIX: /tmp/wineprefix
+          WINEDEBUG: "-all"
+          WINEDLLOVERRIDES: "mscoree,mshtml="   # skip the mono/gecko install prompts
+        run: |
+          wineboot -i || true
+          wineserver -w || true
+          for t in OscUdpTest OscTcpTest; do
+            echo "=== $t (win32, under Wine) ==="
+            wine ./$t.exe
+          done
+
   tsan:
     name: ThreadSanitizer (receive loop concurrency)
     runs-on: ubuntu-latest

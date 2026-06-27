@@ -188,9 +188,10 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
       `TcpListeningReceiveSocket` (per-connection deframer → `PacketListener`).
       POSIX backend is runtime-tested (`OscTcpTest`, a real loopback incl. a
       segment-spanning message; ASan/UBSan/TSan-clean); the win32 backend mirrors it
-      and is MinGW/Windows-CI compile-verified. See
+      and is **runtime-tested under Wine** (the `win32-wine` CI job cross-compiles
+      `OscUdpTest`/`OscTcpTest` with MinGW and runs them under Wine). See
       [`docs/OSC_OVER_TCP.md`](docs/OSC_OVER_TCP.md). Deferred: SLIP framing, TLS,
-      WebSocket, `epoll`, and win32 runtime testing.
+      WebSocket, and `epoll`.
 - [ ] Multicast receive (cherry-pick from `stephram/oscpack`). *(Self-contained;
       the next demand-driven feature pickup. Note: the `ip/*/UdpSocket.h` backends
       now enter the compiled surface via the demos, so the deferred `strcpy`/

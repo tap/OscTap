@@ -28,6 +28,7 @@
 
 // Reuse the posix socket includes and the SockaddrFromIpEndpointName /
 // IpEndpointNameFromSockaddr helpers defined in the UDP backend.
+#include <osctap/ip/IpEndpointName.h> // complete type before the helpers below use it
 #include <osctap/ip/posix/UdpSocket.h>
 #include <osctap/ip/PacketListener.h>
 #include <osctap/osc/OscStreamFraming.h>
