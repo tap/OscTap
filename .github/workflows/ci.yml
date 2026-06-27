@@ -207,6 +207,48 @@ jobs:
             wine ./$t.exe
           done
 
+  coverage:
+    name: Code coverage (gcovr)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gcovr
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcovr
+
+      # Instrument with gcov (-O0 --coverage) and run the full suite. Coverage is
+      # measured over the library headers only (osctap/), since the library is
+      # header-only -- the test/demo TUs are the carriers. gcovr handles the
+      # inline-functions-across-many-binaries case cleanly (lcov over-/under-counts
+      # it). Fails if line coverage drops below 80% (currently ~85%), so coverage
+      # regressions are caught; a Cobertura XML is uploaded for trend tooling.
+      - name: Configure with coverage instrumentation
+        run: >
+          cmake -S . -B build-cov -DOSCPACK_BUILD_EXAMPLES=ON
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="-O0 --coverage"
+          -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+
+      - name: Build
+        run: cmake --build build-cov
+
+      - name: Run tests
+        run: ctest --test-dir build-cov --output-on-failure
+
+      - name: Coverage report (library headers; fail under 80% lines)
+        run: >
+          gcovr --root . --filter 'osctap/' --print-summary
+          --fail-under-line 80 --cobertura coverage.xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-cobertura
+          path: coverage.xml
+
   tsan:
     name: ThreadSanitizer (receive loop concurrency)
     runs-on: ubuntu-latest

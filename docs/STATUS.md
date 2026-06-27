@@ -167,6 +167,12 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   targeted port 0 → nothing delivered; the old `OscConcurrencyTest` packet was
   "best-effort, never asserted", which hid it). Fixed in both posix and win32 via
   `getsockname()` after bind. **Don't drop that read-back.**
+- **Code coverage** is measured by the `coverage` CI job with **gcovr** (not lcov —
+  lcov 2.0 mis-merges header-only inline functions across the many test binaries,
+  producing >100%/0% artifacts). Baseline is **~85% lines / ~94% functions** over
+  `osctap/`; the job **fails under 80% lines**, so coverage regressions are caught.
+  Known-uncovered: `ip/posix/NetworkingUtils.h` `GetHostByName` (tests use numeric
+  IPs, not hostname resolution) and some error/EINTR branches in the socket loops.
 - **`examples/` (SimpleSend/SimpleReceive/OscDump) are compile-checked, not run**
   (they bind sockets / block on input). They use the `oscpack::` alias on purpose
   (extra shim coverage). `demos/` are the modern, tested equivalents. The old
