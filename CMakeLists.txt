@@ -111,6 +111,19 @@ if(OSCTAP_FREESTANDING)
   add_test(NAME OscFreestandingTest COMMAND OscFreestandingTest)
 endif()
 
+# Integration demos (Pi 5 <-> Pico 2W <-> Android tutorial). Real, runnable OSC
+# programs over the POSIX UDP backend: a hub/router and a CLI sender. POSIX-only
+# (they use the ip/posix sockets + a SIGINT handler), mirroring the Pi 5 target.
+# See docs/INTEGRATION_PI5_PICO_ANDROID.md.
+set(OSCTAP_BUILD_DEMOS OFF CACHE BOOL "Build the Pi 5 integration demos (POSIX sockets)")
+if(OSCTAP_BUILD_DEMOS AND NOT WIN32)
+  add_executable(pi5_hub demos/pi5_hub.cpp)
+  target_link_libraries(pi5_hub oscpack)
+
+  add_executable(osc_send demos/osc_send.cpp)
+  target_link_libraries(osc_send oscpack)
+endif()
+
 set(OSCTAP_BUILD_FUZZERS OFF CACHE BOOL "Build the libFuzzer fuzz target (requires Clang)")
 set(OSCTAP_FUZZER_STANDALONE OFF CACHE BOOL "Build the fuzz target with the standalone driver instead of libFuzzer (works with g++/ASan, no fuzzer runtime needed)")
 

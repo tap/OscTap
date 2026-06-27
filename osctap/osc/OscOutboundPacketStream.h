@@ -466,6 +466,19 @@ public:
       return *this;
     }
 
+    // A runtime const char* would otherwise bind to operator<<(bool): the
+    // standard pointer->bool conversion outranks the user-defined conversion to
+    // string_view, so a C-string pointer was silently serialized as a boolean.
+    // This overload makes a const char* serialize as an OSC string, as expected.
+    // (String *literals* still match the more specialised const char(&)[N]
+    // overload below; this catches decayed/runtime pointers.) Freestanding-safe:
+    // forwards to the string_view overload, no heap.
+    OutboundPacketStream& operator<<( const char *rhs )
+    {
+      operator<<(osctap::string_view(rhs));
+      return *this;
+    }
+
 #ifndef OSCTAP_FREESTANDING
     // Hosted convenience: std::string pulls in <string> (and heap). The
     // freestanding profile omits it; pass const char*, a char array, or

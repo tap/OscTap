@@ -10,11 +10,15 @@ the original conversation. For the full plan and rationale see
   See the scorecard in `ROADMAP.md`.
 - **Phase 1 is complete** (directory rename + shim, ClusterFuzzLite, `bit_cast`/
   `constexpr` parsing, warnings-as-errors, RTSan, TSan).
-- **Phase 2 ("Reach") prep has started**: the freestanding/embedded profile
-  groundwork is landed — the `OSCTAP_THROW` seam (`osc/OscConfig.h`), the
-  `OSCTAP_FREESTANDING` CMake option + `freestanding` CI job, and the Raspberry Pi
-  Pico 2W guide ([`EMBEDDED_PICO2W.md`](EMBEDDED_PICO2W.md)). The remaining Reach
-  items (QEMU, Android NDK, multicast) stay demand-gated.
+- **Phase 2 ("Reach") is underway**: landed so far —
+  - the freestanding/embedded profile (the `OSCTAP_THROW` seam in `osc/OscConfig.h`,
+    `OSCTAP_FREESTANDING` + the `freestanding` CI job) and the Pico 2W guide
+    ([`EMBEDDED_PICO2W.md`](EMBEDDED_PICO2W.md));
+  - **aarch64 / Raspberry Pi 5 CI** under `qemu-user` (the `aarch64-qemu` job);
+  - the **Pi 5 ⇄ Pico 2W ⇄ Android integration**: runnable Pi 5 demos
+    (`demos/`, `OSCTAP_BUILD_DEMOS`), an Android JNI bridge (`android/`), and the
+    tutorial ([`INTEGRATION_PI5_PICO_ANDROID.md`](INTEGRATION_PI5_PICO_ANDROID.md)).
+  Remaining Reach items (multicast, armv7, a full Android sample app) stay demand-gated.
 - All six audit findings are fixed with regression tests; see commit history and
   `tests/OscUnitTests.cpp` (`test4`/`test5`).
 - **CI is the source of truth for build health.** `.github/workflows/ci.yml` builds and
@@ -105,6 +109,27 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   hits the fatal handler (a remote reset/DoS). Safe only on a trusted link; open
   networks should keep exceptions on and `catch` the `Malformed*Exception` types. A
   non-throwing `TryInit`/validate is the tracked Phase 2 follow-up.
+- **A runtime `const char*` now serializes as an OSC string**, via a dedicated
+  `OutboundPacketStream::operator<<(const char*)`. Before, a `const char*` bound to
+  `operator<<(bool)` (standard pointer→bool conversion outranks the user-defined
+  `string_view` conversion) and was silently sent as a boolean — only string
+  *literals* (the `const char(&)[N]` overload) worked. The fix is freestanding-safe
+  (forwards to `string_view`); `OscFreestandingTest` sends a runtime `const char*`
+  to guard it. **Don't remove it**, and don't assume `<< somePtr` ever meant bool.
+- **The `ip/` networking layer now has compiled coverage** via the `demos/`
+  (`OSCTAP_BUILD_DEMOS`, POSIX-only) and the `aarch64-qemu` CI job. Previously the
+  POSIX/win32 `UdpSocket`/`NetworkingUtils` backends were header-only-but-uncompiled.
+  The win32 backend and the deferred `strcpy`/`gethostbyname` cleanup (#4) are still
+  not in the compiled surface — fold them in with multicast (#19).
+- **`OSCTAP_BUILD_DEMOS` and the `aarch64-qemu` job**: demos are POSIX-only
+  (`ip/posix` + a SIGINT handler) and gated `NOT WIN32`. The aarch64 job runs the
+  suite under `qemu-user` but **excludes `OscConcurrencyTest`** (emulated threads +
+  loopback sockets are flaky); keep new socket/thread tests off the emulated run or
+  they'll flake CI.
+- **Android lives in `android/`** (`osctap_jni.cpp` bridge, NDK `CMakeLists.txt`,
+  `OscTap.kt`). The bridge is compile-checked against `jni.h` in CI-adjacent dev but
+  there is **no NDK build in CI** yet — changes there aren't gated, so keep the
+  bridge's OscTap API usage in sync by hand (or add an NDK job when one's warranted).
 - **Include guards are still named `INCLUDED_OSCPACK_*`** — cosmetic, left as-is.
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with

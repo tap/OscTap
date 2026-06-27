@@ -136,6 +136,38 @@ jobs:
       - name: Run freestanding smoke test
         run: ctest --test-dir build-freestanding -R OscFreestandingTest --output-on-failure
 
+  aarch64-qemu:
+    name: aarch64 cross-build + qemu (Pi-5-class / big-endian-agnostic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Cross-compile for 64-bit Arm (the Raspberry Pi 5 ISA) and run the suite
+      # under qemu-user, so the aarch64 build is proven green on every push. This
+      # also exercises the endian-agnostic (de)serialization on a non-x86 target.
+      - name: Install aarch64 toolchain + qemu-user
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-aarch64-linux-gnu qemu-user-static
+
+      - name: Configure (aarch64 cross; qemu as the test emulator)
+        run: >
+          cmake -S . -B build-aarch64 -DOSCPACK_BUILD_EXAMPLES=ON
+          -DOSCTAP_WARNINGS_AS_ERRORS=ON
+          -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64
+          -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc
+          -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+          "-DCMAKE_CROSSCOMPILING_EMULATOR=qemu-aarch64-static;-L;/usr/aarch64-linux-gnu"
+
+      - name: Build
+        run: cmake --build build-aarch64
+
+      # OscConcurrencyTest is excluded: it uses real threads + loopback sockets,
+      # which are flaky under qemu-user emulation. Native TSan/POSIX legs already
+      # cover it; here we vet the parse/serialize suite on the aarch64 ISA.
+      - name: Run suite under qemu
+        run: ctest --test-dir build-aarch64 -E OscConcurrencyTest --output-on-failure
+
   tsan:
     name: ThreadSanitizer (receive loop concurrency)
     runs-on: ubuntu-latest
