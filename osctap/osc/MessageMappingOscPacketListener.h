@@ -34,8 +34,8 @@
 	requested that these non-binding requests be included whenever the
 	above license is reproduced.
 */
-#ifndef INCLUDED_OSCPACK_MESSAGEMAPPINGOSCPACKETLISTENER_H
-#define INCLUDED_OSCPACK_MESSAGEMAPPINGOSCPACKETLISTENER_H
+#ifndef INCLUDED_OSCTAP_MESSAGEMAPPINGOSCPACKETLISTENER_H
+#define INCLUDED_OSCTAP_MESSAGEMAPPINGOSCPACKETLISTENER_H
 
 #include <cstring>
 #include <map>
@@ -82,4 +82,4 @@ private:
 // Existing code that uses the oscpack:: namespace continues to compile.
 namespace oscpack = osctap;
 
-#endif /* INCLUDED_OSCPACK_MESSAGEMAPPINGOSCPACKETLISTENER_H */
+#endif /* INCLUDED_OSCTAP_MESSAGEMAPPINGOSCPACKETLISTENER_H */

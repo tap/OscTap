@@ -34,8 +34,8 @@
 	requested that these non-binding requests be included whenever the
 	above license is reproduced.
 */
-#ifndef INCLUDED_OSCPACK_OSCHOSTENDIANNESS_H
-#define INCLUDED_OSCPACK_OSCHOSTENDIANNESS_H
+#ifndef INCLUDED_OSCTAP_OSCHOSTENDIANNESS_H
+#define INCLUDED_OSCTAP_OSCHOSTENDIANNESS_H
 
 /*
     Make sure either OSC_HOST_LITTLE_ENDIAN or OSC_HOST_BIG_ENDIAN is defined
@@ -123,5 +123,5 @@
 
 #endif
 
-#endif /* INCLUDED_OSCPACK_OSCHOSTENDIANNESS_H */
+#endif /* INCLUDED_OSCTAP_OSCHOSTENDIANNESS_H */
 
