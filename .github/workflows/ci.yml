@@ -68,14 +68,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure standalone fuzzer
+      - name: Configure standalone fuzzers
         run: cmake -S . -B build-fuzz -DOSCPACK_BUILD_EXAMPLES=OFF -DOSCTAP_FUZZER_STANDALONE=ON
 
-      - name: Build fuzzer
-        run: cmake --build build-fuzz --target fuzz_parse
+      - name: Build fuzzers
+        run: cmake --build build-fuzz --target fuzz_parse fuzz_deframe
 
-      - name: Replay corpus and run mutation loop
+      - name: Replay corpus and run mutation loop (parser)
         run: ./build-fuzz/fuzz_parse fuzz/corpus/*
+
+      - name: Replay corpus and run mutation loop (TCP deframer)
+        run: ./build-fuzz/fuzz_deframe fuzz/corpus_deframe/*
 
   rtsan:
     name: RTSan + function-effects (realtime hot path)

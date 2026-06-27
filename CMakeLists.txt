@@ -54,6 +54,12 @@ if(OSCPACK_BUILD_EXAMPLES)
   target_link_libraries(OscValidateTest oscpack)
   add_test(NAME OscValidateTest COMMAND OscValidateTest)
 
+  # Length-prefix stream framing (OSC over TCP). The reassembly/DoS-guard logic is
+  # transport-independent and tested without sockets. See OscStreamFramingTest.cpp.
+  add_executable(OscStreamFramingTest tests/OscStreamFramingTest.cpp)
+  target_link_libraries(OscStreamFramingTest oscpack)
+  add_test(NAME OscStreamFramingTest COMMAND OscStreamFramingTest)
+
   # Compile/link smoke for the win32 socket backend, which otherwise has no
   # compiled coverage (the POSIX demos/tests are gated off Windows). Built by the
   # existing windows-latest CI legs. Warnings-as-errors is deliberately OFF for
@@ -149,17 +155,21 @@ set(OSCTAP_BUILD_FUZZERS OFF CACHE BOOL "Build the libFuzzer fuzz target (requir
 set(OSCTAP_FUZZER_STANDALONE OFF CACHE BOOL "Build the fuzz target with the standalone driver instead of libFuzzer (works with g++/ASan, no fuzzer runtime needed)")
 
 if(OSCTAP_BUILD_FUZZERS OR OSCTAP_FUZZER_STANDALONE)
-  if(OSCTAP_FUZZER_STANDALONE)
-    add_executable(fuzz_parse fuzz/fuzz_parse.cpp fuzz/standalone_main.cpp)
-    target_compile_options(fuzz_parse PRIVATE -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all)
-    target_link_libraries(fuzz_parse oscpack -fsanitize=address,undefined)
-  else()
-    # real coverage-guided libFuzzer build (Clang only)
-    add_executable(fuzz_parse fuzz/fuzz_parse.cpp)
-    target_compile_options(fuzz_parse PRIVATE -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all)
-    target_link_libraries(fuzz_parse oscpack -fsanitize=fuzzer,address,undefined)
-  endif()
-  set_target_properties(fuzz_parse PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+  # fuzz_parse: the OSC packet parser. fuzz_deframe: the OSC-over-TCP stream
+  # deframer + parser (length-prefix reassembly, the bounded-buffer/DoS guard).
+  foreach(fuzzer fuzz_parse fuzz_deframe)
+    if(OSCTAP_FUZZER_STANDALONE)
+      add_executable(${fuzzer} fuzz/${fuzzer}.cpp fuzz/standalone_main.cpp)
+      target_compile_options(${fuzzer} PRIVATE -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all)
+      target_link_libraries(${fuzzer} oscpack -fsanitize=address,undefined)
+    else()
+      # real coverage-guided libFuzzer build (Clang only)
+      add_executable(${fuzzer} fuzz/${fuzzer}.cpp)
+      target_compile_options(${fuzzer} PRIVATE -g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all)
+      target_link_libraries(${fuzzer} oscpack -fsanitize=fuzzer,address,undefined)
+    endif()
+    set_target_properties(${fuzzer} PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+  endforeach()
 endif()
 
 # Warnings-as-errors is opt-in (default OFF) so that consumers building against
