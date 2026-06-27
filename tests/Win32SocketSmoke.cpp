@@ -15,6 +15,7 @@
 */
 
 #include "ip/UdpSocket.h"
+#include "ip/TcpSocket.h"
 #include "ip/IpEndpointName.h"
 #include "ip/PacketListener.h"
 #include "osc/OscOutboundPacketStream.h"
@@ -44,6 +45,15 @@ void exercise_win32_backend()
     osctap::UdpListeningReceiveSocket rx(
         osctap::IpEndpointName( osctap::IpEndpointName::ANY_ADDRESS, 9000 ), &listener );
     rx.AsynchronousBreak();
+
+    // TCP backend (ip/win32/TcpSocket.h): client Send + connection-aware server.
+    osctap::TcpTransmitSocket tcpTx( ep );
+    tcpTx.Send( buf, sizeof(buf) );
+
+    osctap::TcpListeningReceiveSocket tcpRx(
+        osctap::IpEndpointName( osctap::IpEndpointName::ANY_ADDRESS, 9001 ), &listener );
+    tcpRx.Run();
+    tcpRx.AsynchronousBreak();
 }
 
 } // namespace
