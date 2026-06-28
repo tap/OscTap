@@ -197,7 +197,9 @@ jobs:
 
       - name: Run under Wine
         env:
-          WINEPREFIX: /tmp/wineprefix
+          # A runner-owned prefix dir: Wine refuses to use /tmp when it isn't
+          # owned by the runner user ("'/tmp' is not owned by you").
+          WINEPREFIX: ${{ runner.temp }}/wineprefix
           WINEDEBUG: "-all"
           WINEDLLOVERRIDES: "mscoree,mshtml="   # skip the mono/gecko install prompts
         run: |
