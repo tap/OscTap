@@ -1067,7 +1067,7 @@ class ReceivedBundle{
       }
 
       if( p != end_ )
-        return "bundle contents ";
+        return "bundle contents did not match bundle size";
 
       return nullptr;
     }

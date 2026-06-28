@@ -221,11 +221,18 @@ private:
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = htonl( INADDR_LOOPBACK );
         addr.sin_port = 0;
-        bind( breakSocket_, (struct sockaddr*)&addr, sizeof(addr) );
 
+        // bind -> read back the assigned port -> connect to self. If any step
+        // fails, AsynchronousBreak() could never wake Run() (it would hang in
+        // select()), so treat it as fatal.
         socklen_t len = sizeof(addr);
-        getsockname( breakSocket_, (struct sockaddr*)&addr, &len );
-        connect( breakSocket_, (struct sockaddr*)&addr, sizeof(addr) );
+        if( bind( breakSocket_, (struct sockaddr*)&addr, sizeof(addr) ) == SOCKET_ERROR
+            || getsockname( breakSocket_, (struct sockaddr*)&addr, &len ) == SOCKET_ERROR
+            || connect( breakSocket_, (struct sockaddr*)&addr, sizeof(addr) ) == SOCKET_ERROR ){
+            closesocket( breakSocket_ );
+            breakSocket_ = INVALID_SOCKET;
+            throw std::runtime_error( "setup of asynchronous break socket failed\n" );
+        }
     }
 
     void AcceptConnection()
@@ -235,6 +242,17 @@ private:
         SOCKET conn = ::accept( listenSocket_, (struct sockaddr*)&peerAddr, &len );
         if( conn == INVALID_SOCKET )
             return;
+
+        // Winsock select() works over an fd_set array bounded by FD_SETSIZE
+        // (default 64). Beyond it, FD_SET silently drops sockets and those
+        // connections would stall forever -- so refuse new connections at the
+        // limit instead. (v1 targets a handful of connections; high connection
+        // counts are a future poll/epoll concern -- see issue #14.)
+        if( connections_.size() + 2 >= FD_SETSIZE ){
+            closesocket( conn );
+            return;
+        }
+
         int one = 1;
         setsockopt( conn, IPPROTO_TCP, TCP_NODELAY, (const char*)&one, sizeof(one) );
         connections_.emplace( std::piecewise_construct,

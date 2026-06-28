@@ -182,8 +182,9 @@ jobs:
       # tests for win32 and run them under Wine, so the win32 UDP + TCP backends
       # get actual runtime coverage on every push.
       - name: Install MinGW-w64 + Wine
+        # The tests are cross-compiled to 64-bit .exe, so only 64-bit Wine is
+        # needed (no i386 multiarch, which is an unnecessary failure surface).
         run: |
-          sudo dpkg --add-architecture i386
           sudo apt-get update
           sudo apt-get install -y g++-mingw-w64-x86-64 wine64 wine
 
