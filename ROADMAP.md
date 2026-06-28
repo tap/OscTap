@@ -196,10 +196,11 @@ See [Sanitizer strategy](#sanitizer-strategy) for scope and rationale.
       `OscUdpTest`/`OscTcpTest` with MinGW and runs them under Wine). See
       [`docs/OSC_OVER_TCP.md`](docs/OSC_OVER_TCP.md). Deferred: SLIP framing, TLS,
       WebSocket, and `epoll`.
-- [ ] Multicast receive (cherry-pick from `stephram/oscpack`). *(Self-contained;
-      the next demand-driven feature pickup. Note: the `ip/*/UdpSocket.h` backends
-      now enter the compiled surface via the demos, so the deferred `strcpy`/
-      `gethostbyname` cleanup from Phase 1 #4 can ride along here.)*
+- [x] **Multicast receive** — `UdpSocket::JoinMulticastGroup()` /
+      `LeaveMulticastGroup()` (IP_ADD/DROP_MEMBERSHIP) on both the posix and win32
+      backends, exposed on any UDP receive socket. `tests/OscMulticastTest.cpp` is a
+      real loopback test (join a group, send OSC to it, receive — skip-resilient),
+      ASan/UBSan-clean and also runtime-tested on win32 under Wine.
 
 ## Milestones → GitHub
 

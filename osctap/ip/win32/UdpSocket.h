@@ -142,6 +142,26 @@ public:
     setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &reuseAddr, sizeof(reuseAddr));
   }
 
+  void JoinMulticastGroup( const IpEndpointName& multicastGroup )
+  {
+    struct ip_mreq mreq;
+    std::memset( &mreq, 0, sizeof(mreq) );
+    mreq.imr_multiaddr.s_addr = htonl( multicastGroup.address );
+    mreq.imr_interface.s_addr = INADDR_ANY; // default interface
+    if( setsockopt( socket_, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&mreq, sizeof(mreq) ) == SOCKET_ERROR )
+      throw std::runtime_error( "unable to join multicast group\n" );
+  }
+
+  void LeaveMulticastGroup( const IpEndpointName& multicastGroup )
+  {
+    struct ip_mreq mreq;
+    std::memset( &mreq, 0, sizeof(mreq) );
+    mreq.imr_multiaddr.s_addr = htonl( multicastGroup.address );
+    mreq.imr_interface.s_addr = INADDR_ANY;
+    if( setsockopt( socket_, IPPROTO_IP, IP_DROP_MEMBERSHIP, (const char*)&mreq, sizeof(mreq) ) == SOCKET_ERROR )
+      throw std::runtime_error( "unable to leave multicast group\n" );
+  }
+
   IpEndpointName LocalEndpointFor( const IpEndpointName& remoteEndpoint ) const
   {
     assert( isBound_ );

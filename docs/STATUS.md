@@ -163,6 +163,10 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   socket (no `pipe()` on Windows). NB the TCP backend headers must be **self-contained**
   (they `#include <osctap/ip/IpEndpointName.h>` explicitly) — including `TcpSocket.h`
   without `UdpSocket.h` first previously failed on win32; the Wine job guards that.
+- **Multicast receive**: `UdpSocket::JoinMulticastGroup()`/`LeaveMulticastGroup()`
+  (IP_ADD/DROP_MEMBERSHIP) on both backends. `OscMulticastTest` (POSIX-only, skip-
+  resilient like the other socket tests; also Wine-tested on win32) joins a group, sends
+  OSC to it, and asserts receipt. Bind the socket to the port *before* joining.
 - **Socket loopback tests** (`OscUdpTest`, `OscTcpTest`, POSIX-only): real client+
   server asserting that messages arrive and decode. They **SKIP** (print a notice,
   exit 0) if the environment denies loopback networking, so they don't false-fail on

@@ -195,7 +195,7 @@ jobs:
 
       - name: Cross-compile the socket loopback tests for win32
         run: |
-          for t in OscUdpTest OscTcpTest; do
+          for t in OscUdpTest OscTcpTest OscMulticastTest; do
             x86_64-w64-mingw32-g++ -std=c++17 -O1 -static -I . -I osctap \
               tests/$t.cpp -o $t.exe -lws2_32 -lwinmm
           done
@@ -210,7 +210,7 @@ jobs:
         run: |
           wineboot -i || true
           wineserver -w || true
-          for t in OscUdpTest OscTcpTest; do
+          for t in OscUdpTest OscTcpTest OscMulticastTest; do
             echo "=== $t (win32, under Wine) ==="
             wine ./$t.exe
           done
