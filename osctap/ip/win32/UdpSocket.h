@@ -387,7 +387,7 @@ public:
 
     while( !break_ ){
 
-      double currentTimeMs = GetCurrentTimeMs();
+      currentTimeMs = GetCurrentTimeMs(); // reuse outer (avoid MSVC C4456 shadow)
 
             DWORD waitTime = INFINITE;
             if( !timerQueue_.empty() ){
