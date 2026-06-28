@@ -34,7 +34,9 @@
 #include <osctap/osc/OscStreamFraming.h>
 
 #include <netinet/tcp.h> // TCP_NODELAY
+#include <cerrno>        // errno (don't rely on transitive includes)
 #include <map>
+#include <vector>
 
 namespace osctap
 {

@@ -130,6 +130,11 @@ public:
                 if( frameSize_ > maxFrameSize_ )
                     return false; // oversized / hostile frame
 
+                // A zero-length frame is structurally valid framing; it is
+                // forwarded as an empty packet, which the OSC layer
+                // (ReceivedPacket) then rejects -- framing doesn't judge OSC
+                // validity, it only delimits packets.
+
                 haveHeader_ = true;
             }
 
@@ -146,7 +151,7 @@ public:
                 buffer_.insert( buffer_.end(), p, p + take );
                 p += take;
                 if( buffer_.size() == (std::size_t)frameSize_ ){
-                    sink( buffer_.empty() ? p : buffer_.data(), frameSize_ );
+                    sink( buffer_.data(), frameSize_ );
                     buffer_.clear();
                     haveHeader_ = false;
                 }
