@@ -167,6 +167,12 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   targeted port 0 → nothing delivered; the old `OscConcurrencyTest` packet was
   "best-effort, never asserted", which hid it). Fixed in both posix and win32 via
   `getsockname()` after bind. **Don't drop that read-back.**
+- **Docs map**: `docs/GETTING_STARTED.md` (OSC-101 over UDP) and `docs/API.md`
+  (public-surface reference) are the entry points, linked from `README.md`; feature
+  guides are `OSC_OVER_TCP.md`, `EMBEDDED_PICO2W.md`, `INTEGRATION_PI5_PICO_ANDROID.md`.
+  The original oscpack `README`/`CHANGES`/`TODO` were moved to `docs/legacy/`
+  (historical; don't treat as current). `API.md` is hand-maintained — update it when
+  the public surface changes.
 - **Code coverage** is measured by the `coverage` CI job with **gcovr** (not lcov —
   lcov 2.0 mis-merges header-only inline functions across the many test binaries,
   producing >100%/0% artifacts). Baseline is **~85% lines / ~94% functions** over
