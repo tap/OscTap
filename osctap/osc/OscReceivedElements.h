@@ -252,14 +252,12 @@ class ReceivedMessageArgument{
       else
         OSCTAP_THROW( WrongArgumentTypeException() );
     }
-    bool AsBoolUnchecked() const
+    bool AsBoolUnchecked() const OSCTAP_REALTIME
     {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == TRUE_TYPE_TAG )
-        return true;
-      else
-        return false;
+      // Unchecked: assumes a valid bool argument (tag already checked / message
+      // validated at construction), so it just reads the tag -- throw-free and
+      // realtime-safe, like the other *Unchecked accessors.
+      return *typeTagPtr_ == TRUE_TYPE_TAG;
     }
 
     bool IsNil() const { return *typeTagPtr_ == NIL_TYPE_TAG; }
@@ -419,15 +417,15 @@ class ReceivedMessageArgument{
       else
         OSCTAP_THROW( WrongArgumentTypeException() );
     }
-    void AsBlobUnchecked( const void*& data, osc_bundle_element_size_t& size ) const
+    void AsBlobUnchecked( const void*& data, osc_bundle_element_size_t& size ) const OSCTAP_REALTIME
     {
-      // read blob size as an unsigned int then validate
-      osc_bundle_element_size_t sizeResult = (osc_bundle_element_size_t)ToUInt32( argumentPtr_ );
-      if( !IsValidElementSizeValue(sizeResult) )
-        OSCTAP_THROW( MalformedMessageException("invalid blob size") );
-
-      size = sizeResult;
-      data = (void*)(argumentPtr_+ osctap::OSC_SIZEOF_INT32);
+      // Like the other *Unchecked accessors, this trusts that the message was
+      // validated at construction: ReceivedMessage::TryInit() bounds-checks every
+      // blob (valid size AND within the message), so reading the size here without
+      // re-validating is safe. That makes this throw-free and realtime-safe -- the
+      // non-throwing blob accessor for the RT read path.
+      size = (osc_bundle_element_size_t)ToUInt32( argumentPtr_ );
+      data = (const void*)( argumentPtr_ + osctap::OSC_SIZEOF_INT32 );
     }
 
     bool IsArrayBegin() const { return *typeTagPtr_ == ARRAY_BEGIN_TYPE_TAG; }

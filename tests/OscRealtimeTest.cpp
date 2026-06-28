@@ -21,10 +21,11 @@
     What is deliberately NOT in the realtime region (per the contract -- these may
     throw and run off the audio thread): message construction/validation
     (ReceivedMessage's constructor calls Init(), which validates), the *checked*
-    accessors (AsInt32() etc., which throw on type mismatch), AsBoolUnchecked()
-    and AsBlobUnchecked() (which still validate), and serialization (operator<<
-    throws on buffer overflow). Iterating *past* a blob is realtime-safe, so the
-    message below includes one; only the validating blob accessor is avoided.
+    accessors (AsInt32() etc., which throw on type mismatch), and serialization
+    (operator<< throws on buffer overflow). Every *Unchecked read accessor --
+    including AsBoolUnchecked() and the blob accessor AsBlobUnchecked() -- is
+    throw-free and on the contract; the message below includes a blob and a bool,
+    read on the hot path through them.
 */
 
 #include "osc/OscReceivedElements.h"
@@ -50,6 +51,8 @@ struct ReadResult {
     char     ch = 0;
     bool     boolTrue = false, boolFalse = true;
     const char *str = nullptr, *sym = nullptr;
+    const void *blob = nullptr;
+    osc_bundle_element_size_t blobSize = 0;
     uint32_t argCount = 0;
     char     firstAddrChar = 0;
 };
@@ -76,13 +79,16 @@ static ReadResult ReadHotPath( const ReceivedMessage& m ) OSCTAP_REALTIME
             case DOUBLE_TYPE_TAG:       r.d       = i->AsDoubleUnchecked();     break;
             case STRING_TYPE_TAG:       r.str     = i->AsStringUnchecked();     break;
             case SYMBOL_TYPE_TAG:       r.sym     = i->AsSymbolUnchecked();     break;
-            // bool's value lives in the type tag itself -- read it RT-safely
-            // without the (validating) AsBoolUnchecked().
-            case TRUE_TYPE_TAG:         r.boolTrue  = true;                     break;
-            case FALSE_TYPE_TAG:        r.boolFalse = false;                    break;
-            // nil / infinitum / array markers / blob: iterating past them is
-            // realtime-safe (Advance() does no allocation or throwing); we just
-            // don't read the blob payload here (that accessor validates).
+            // AsBoolUnchecked() is throw-free / realtime-safe too, so read bool
+            // through it (its value lives in the type tag).
+            case TRUE_TYPE_TAG:         r.boolTrue  = i->AsBoolUnchecked();     break;
+            case FALSE_TYPE_TAG:        r.boolFalse = i->AsBoolUnchecked();     break;
+            // Blob: AsBlobUnchecked() is now throw-free / realtime-safe (the size
+            // was validated at construction), so the blob payload is read on the
+            // hot path too.
+            case BLOB_TYPE_TAG:         i->AsBlobUnchecked( r.blob, r.blobSize ); break;
+            // nil / infinitum / array markers: iterating past them is realtime-safe
+            // (Advance() does no allocation or throwing).
             default: break;
         }
     }
@@ -138,6 +144,9 @@ int main()
     CHECK( r.boolTrue == true );
     CHECK( r.boolFalse == false );
     CHECK( r.argCount > 0 );
+    CHECK( r.blob != nullptr && r.blobSize == 5
+           && static_cast<const unsigned char*>(r.blob)[0] == 1
+           && static_cast<const unsigned char*>(r.blob)[4] == 5 );
 
     if( g_failures == 0 )
         std::cout << "realtime test: read hot path OK (RT-safe)\n";

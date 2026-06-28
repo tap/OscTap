@@ -121,10 +121,12 @@ rename is the first item of Phase 1, below.
       `tests/OscRealtimeTest.cpp` with `-fsanitize=realtime` (runtime) **and**
       `-Wfunction-effects -Werror` (static), so the contract is enforced both ways. The
       validating/throwing surface (message construction/`Init()`, the checked accessors,
-      `AsBoolUnchecked`/`AsBlobUnchecked`, and serialization's overflow check) is
-      deliberately left off the contract — it runs off the audio thread.
-      Deferred: a non-throwing realtime blob accessor, and recording worst-case latency as
-      a secondary benchmark.
+      and serialization's overflow check) is deliberately left off the contract — it runs
+      off the audio thread. **Every `*Unchecked` read accessor is now throw-free and on the
+      contract**, including `AsBoolUnchecked` and the blob accessor `AsBlobUnchecked` (they
+      trust the validation done at construction). Worst-case parse/serialize latency is
+      recorded by `tests/OscLatencyBench.cpp` — the secondary signal the strategy calls for,
+      run (informationally) in the RTSan CI job.
 - [x] **TSan**: `tests/OscConcurrencyTest.cpp` runs `SocketReceiveMultiplexer::Run()` on
       one thread and stops it via `AsynchronousBreak()` from another (signalling in a loop
       so it can't race ahead of `Run()`'s break-flag reset), plus a best-effort loopback

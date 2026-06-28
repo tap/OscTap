@@ -77,9 +77,11 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
 - **`OSCTAP_REALTIME` marks the realtime hot path** (`OscTypes.h`). It is
   `noexcept [[clang::nonblocking]]` on Clang ≥ 20 and a **no-op everywhere else**, so it
   must stay applied only to genuinely allocation-/throw-free functions — the read/iterate
-  path over a *known-valid* message. **Do not annotate anything that can throw or allocate**
-  (message construction/`Init()`, checked accessors, `AsBoolUnchecked`/`AsBlobUnchecked`,
-  serialization): the Clang-20 RTSan job (`-DOSCTAP_RTSAN=ON`) will fail it both at runtime
+  path over a *known-valid* message. Every `*Unchecked` read accessor (incl. `AsBoolUnchecked`
+  and `AsBlobUnchecked`, which trust the validation done at construction) is throw-free and
+  carries `OSCTAP_REALTIME`. **Do not annotate anything that can throw or allocate** (message
+  construction/`Init()`, the *checked* accessors, serialization's overflow check): the
+  Clang-20 RTSan job (`-DOSCTAP_RTSAN=ON`) will fail it both at runtime
   (`-fsanitize=realtime`) and statically (`-Wfunction-effects -Werror`).
   `tests/OscRealtimeTest.cpp` is the guard and also runs as a plain functional test on the
   rest of the matrix. Local RTSan needs Clang ≥ 20 (`apt-get install clang-20 libclang-rt-20-dev`).
