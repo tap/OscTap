@@ -5,10 +5,11 @@ OscTap is the actively-maintained, security-hardened, modern-C++ continuation of
 document is the source of truth for the rebrand and the work plan. See
 [`docs/HERITAGE.md`](docs/HERITAGE.md) for lineage and credits.
 
-> Status: Phase 0 and Phase 1 complete. Phase 2 ("Reach") underway — freestanding
-> profile, aarch64/Pi 5 CI, and the Pi 5 ⇄ Pico 2W ⇄ Android integration (demos +
-> tutorial + Android JNI bridge) have landed (see Phase 2 below). Remaining:
-> multicast, armv7, and a full Android sample app.
+> Status: Phase 0 and Phase 1 complete. Phase 2 ("Reach") well underway — freestanding
+> profile + non-throwing validation, aarch64/Pi 5 CI, OSC-over-TCP (v1), win32 runtime
+> testing (Wine), code-coverage gate, and the Pi 5 ⇄ Pico 2W ⇄ Android integration have
+> landed (see Phase 2 below). Remaining: multicast, armv7, a full Android sample app,
+> and OSS-Fuzz submission (#7, a Phase 1 tail).
 
 ## Why OscTap exists
 
@@ -87,8 +88,8 @@ rename is the first item of Phase 1, below.
       under `osctap/` and use the `<osctap/...>` prefix; the old `<oscpack/...>` paths are
       preserved by a redirect shim tree under `oscpack/` (each header forwards to its
       `<osctap/...>` counterpart). `tests/CompatIncludeShim.cpp` is the CI-built guard for
-      both the include-path shim and the `oscpack::` namespace alias. Deferred: renaming
-      the cosmetic `INCLUDED_OSCPACK_*` include guards.
+      both the include-path shim and the `oscpack::` namespace alias. (The cosmetic
+      `INCLUDED_OSCPACK_*` include guards were later renamed to `INCLUDED_OSCTAP_*`.)
 - [x] **ClusterFuzzLite** — in-repo continuous fuzzing (OSS-Fuzz's CI-driven sibling).
       `.clusterfuzzlite/` (Dockerfile + build.sh over the existing `fuzz/` harness + seed
       corpus) plus two workflows: per-PR code-change fuzzing (`cflite_pr.yml`) and a daily
@@ -111,8 +112,9 @@ rename is the first item of Phase 1, below.
       `OSCTAP_WARNINGS_AS_ERRORS` option (default OFF so downstream consumers of the
       INTERFACE library are not forced onto our warning bar). The Clang warning flags now
       match GCC's, and the win32 `GetHostByName` was ported to `getaddrinfo` (mirroring the
-      posix backend). Deferred: the uncompiled `ip/*/UdpSocket.h` socket backends still use
-      `strcpy`/`gethostbyname` and will be cleaned when they enter the compiled CI surface.
+      posix backend). The `ip/*/UdpSocket.h` socket backends have since entered the compiled
+      CI surface (demos + win32 smoke/Wine) and are `-Werror`/`/W4`-clean; no `strcpy`/
+      `gethostbyname` remain.
 - [x] **RTSan**: the read/dispatch hot path (iterating and reading a known-valid message
       via the throw-free `*Unchecked` accessors) is annotated `OSCTAP_REALTIME`
       (`noexcept [[clang::nonblocking]]` on Clang ≥ 20). A dedicated Clang-20 CI job builds

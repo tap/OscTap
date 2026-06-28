@@ -228,6 +228,7 @@ See `ROADMAP.md` Phase 1 for the complete list, the sanitizer strategy, and rati
   renamed from `tap/oscpack`; old URLs redirect.
 - The README CI badge tracks the **default branch**; it lights up once this work merges
   to the default branch.
-- Phase 1 milestones/issues are **not yet created**. The plan (per the locked decision)
-  is: `ROADMAP.md` is the source of truth, decomposed into GitHub milestones/issues for
-  tracking.
+- Phase 1/2 work is tracked as GitHub **issues** (#3–#8 for Phase 1; #14–#19 for Phase 2),
+  with `ROADMAP.md` as the source of truth (the locked decision). The **"Phase 2 — Reach"
+  milestone object** is still an owner action — the GitHub MCP tooling can't create
+  milestones.

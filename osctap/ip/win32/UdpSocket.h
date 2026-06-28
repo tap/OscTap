@@ -48,6 +48,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>   // steady_clock for GetCurrentTimeMs()
 #include <cstring> // for memset
 #include <stdexcept>
 #include <vector>
@@ -295,8 +296,11 @@ class SocketReceiveMultiplexerImplementation {
 
   double GetCurrentTimeMs() const
   {
-    return timeGetTime(); // FIXME: bad choice if you want to run for more than 40 days
-    }
+    // std::chrono::steady_clock (matches the posix backend): monotonic and 64-bit,
+    // so unlike the old timeGetTime() it does not wrap after ~49 days.
+    using namespace std::chrono;
+    return (double)duration_cast<milliseconds>( steady_clock::now().time_since_epoch() ).count();
+  }
 
 public:
     SocketReceiveMultiplexerImplementation()
