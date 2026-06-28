@@ -111,7 +111,7 @@ int main()
       Differential( "unknown type tag", b ); }
 
     // claim a huge blob/forge: flip a size-ish word in the bundle's element size
-    { auto b = bun; if( b.size() > 19 ){ b[16] = (char)0x7F; b[17] = (char)0xFF; } // element size huge
+    { auto b = bun; if( b.size() > 19 ){ b[16] = '\x7F'; b[17] = '\xFF'; } // element size huge
       Differential( "bundle element size overflow", b ); }
 
     // non-multiple-of-4 total size

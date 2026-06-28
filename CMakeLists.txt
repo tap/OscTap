@@ -61,17 +61,13 @@ if(OSCPACK_BUILD_EXAMPLES)
   add_test(NAME OscStreamFramingTest COMMAND OscStreamFramingTest)
 
   # Compile/link smoke for the win32 socket backend, which otherwise has no
-  # compiled coverage (the POSIX demos/tests are gated off Windows). Built by the
-  # existing windows-latest CI legs. Warnings-as-errors is deliberately OFF for
-  # this TU (via /WX-, overriding the INTERFACE /WX): it brings the win32 sockets
-  # into the build for the first time, and gating CI on their previously
-  # unexercised /W4 surface is a separate cleanup.
+  # compiled coverage (the POSIX demos/tests are gated off Windows). Built and run
+  # by the existing windows-latest CI legs. The win32 backend is /W4-clean, so it
+  # builds under the INTERFACE /W4 /WX like everything else (a per-target /WX-
+  # would be ineffective anyway -- CMake appends INTERFACE options last).
   if(WIN32)
     add_executable(Win32SocketSmoke tests/Win32SocketSmoke.cpp)
     target_link_libraries(Win32SocketSmoke oscpack)
-    if(OSCTAP_WARNINGS_AS_ERRORS)
-      target_compile_options(Win32SocketSmoke PRIVATE /WX-)
-    endif()
     add_test(NAME Win32SocketSmoke COMMAND Win32SocketSmoke)
   endif()
 
@@ -121,16 +117,10 @@ if(OSCPACK_BUILD_EXAMPLES)
 
   # Canonical oscpack examples, compile-checked so they can't bit-rot (they use
   # the deprecated oscpack:: alias on purpose). Not run -- they bind sockets /
-  # block on input; see demos/ for the modern, tested equivalents. On MSVC they
-  # turn /WX off (like Win32SocketSmoke): they pull in the win32 socket backend,
-  # whose /W4 surface is not yet audited (a tracked follow-up). On GCC/Clang they
-  # keep -Werror (they build clean there).
+  # block on input; see demos/ for the modern, tested equivalents.
   foreach(example SimpleSend SimpleReceive OscDump)
     add_executable(${example} examples/${example}.cpp)
     target_link_libraries(${example} oscpack)
-    if(MSVC AND OSCTAP_WARNINGS_AS_ERRORS)
-      target_compile_options(${example} PRIVATE /WX-)
-    endif()
   endforeach()
 endif()
 

@@ -129,11 +129,14 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   `tests/Win32SocketSmoke.cpp` (a WIN32-gated target the existing windows-latest legs
   build — it instantiates + links the win32 `UdpSocket`/multiplexer/`getaddrinfo`
   paths but guards the socket calls off the runtime path, so CI needs no live
-  network). The win32 smoke builds with `/WX-` (warnings-as-errors off for that TU):
-  cleaning the win32 backend's `/W4` surface (and the `timeGetTime` 40-day `FIXME`)
-  to pass `/WX` is the remaining follow-up. It compiles clean under MinGW
-  `-Wall -Wextra`. (The Phase 1 `strcpy`/`gethostbyname` deferral is fully resolved —
-  no occurrences remain in `ip/`.)
+  network). The win32 backend is now **`/W4`-clean and built under `/WX`** like
+  everything else — the deferred cleanup was forced once the examples/smoke pulled it
+  into the compiled surface (fixed C4505 by making `CompareScheduledTimerCalls` `inline`,
+  and a C4456 `currentTimeMs` shadow). NB: a per-target `/WX-` is **ineffective** here —
+  CMake appends a linked INTERFACE's options *after* the target's own, so the INTERFACE
+  `/WX` always wins; don't try to suppress warnings that way, fix them. Approximate MSVC
+  `/W4` locally with MinGW `-Wall -Wextra -Wshadow -Werror`. (Open: the `timeGetTime`
+  40-day `FIXME`; the Phase 1 `strcpy`/`gethostbyname` deferral is fully resolved.)
 - **`OSCTAP_BUILD_DEMOS` and the `aarch64-qemu` job**: demos are POSIX-only
   (`ip/posix` + a SIGINT handler) and gated `NOT WIN32`. The aarch64 job runs the
   suite under `qemu-user` but **excludes `OscConcurrencyTest`** (emulated threads +
