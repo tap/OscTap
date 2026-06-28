@@ -116,6 +116,14 @@ public:
             throw std::runtime_error("unable to create udp socket\n");
         }
 
+#ifdef SO_NOSIGPIPE
+        // macOS / BSD: a send() to an unreachable destination (e.g. an unrouted
+        // multicast group) raises SIGPIPE and would kill the process. Suppress it
+        // so send() returns an error instead, mirroring the TCP backend.
+        int noSigpipe = 1;
+        setsockopt( socket_, SOL_SOCKET, SO_NOSIGPIPE, &noSigpipe, sizeof(noSigpipe) );
+#endif
+
         std::memset( &sendToAddr_, 0, sizeof(sendToAddr_) );
         sendToAddr_.sin_family = AF_INET;
     }
@@ -141,6 +149,26 @@ public:
         int reusePort = (allowReuse) ? 1 : 0; // int on posix
         setsockopt(socket_, SOL_SOCKET, SO_REUSEPORT, &reusePort, sizeof(reusePort));
 #endif
+    }
+
+    void JoinMulticastGroup( const IpEndpointName& multicastGroup )
+    {
+        struct ip_mreq mreq;
+        std::memset( &mreq, 0, sizeof(mreq) );
+        mreq.imr_multiaddr.s_addr = htonl( multicastGroup.address );
+        mreq.imr_interface.s_addr = INADDR_ANY; // default interface
+        if( setsockopt( socket_, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq) ) < 0 )
+            throw std::runtime_error( "unable to join multicast group\n" );
+    }
+
+    void LeaveMulticastGroup( const IpEndpointName& multicastGroup )
+    {
+        struct ip_mreq mreq;
+        std::memset( &mreq, 0, sizeof(mreq) );
+        mreq.imr_multiaddr.s_addr = htonl( multicastGroup.address );
+        mreq.imr_interface.s_addr = INADDR_ANY;
+        if( setsockopt( socket_, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq) ) < 0 )
+            throw std::runtime_error( "unable to leave multicast group\n" );
     }
 
     IpEndpointName LocalEndpointFor( const IpEndpointName& remoteEndpoint ) const

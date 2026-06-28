@@ -107,6 +107,11 @@ jobs:
       - name: Run unit + realtime tests under RTSan
         run: ctest --test-dir build-rtsan --output-on-failure
 
+      # Secondary RT signal: worst-case parse/serialize latency. Informational
+      # (printed to the log, not gating) -- a regression shows up as a number.
+      - name: Realtime latency benchmark (informational)
+        run: ./build-rtsan/OscLatencyBench
+
   freestanding:
     name: Freestanding profile (${{ matrix.cxx }}, -fno-exceptions -fno-rtti)
     runs-on: ubuntu-latest
@@ -190,7 +195,7 @@ jobs:
 
       - name: Cross-compile the socket loopback tests for win32
         run: |
-          for t in OscUdpTest OscTcpTest; do
+          for t in OscUdpTest OscTcpTest OscMulticastTest; do
             x86_64-w64-mingw32-g++ -std=c++17 -O1 -static -I . -I osctap \
               tests/$t.cpp -o $t.exe -lws2_32 -lwinmm
           done
@@ -205,7 +210,7 @@ jobs:
         run: |
           wineboot -i || true
           wineserver -w || true
-          for t in OscUdpTest OscTcpTest; do
+          for t in OscUdpTest OscTcpTest OscMulticastTest; do
             echo "=== $t (win32, under Wine) ==="
             wine ./$t.exe
           done

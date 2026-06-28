@@ -84,6 +84,12 @@ if(OSCPACK_BUILD_EXAMPLES)
     target_link_options(OscRealtimeTest PRIVATE -fsanitize=realtime)
   endif()
 
+  # Worst-case parse/serialize latency benchmark -- the secondary RT signal (the
+  # primary one is the compiler-checked OscRealtimeTest). Built here; not a ctest
+  # (it asserts nothing, just prints a distribution). The rtsan CI job runs it.
+  add_executable(OscLatencyBench tests/OscLatencyBench.cpp)
+  target_link_libraries(OscLatencyBench oscpack)
+
   # Concurrency test for the receive loop: Run() on one thread vs
   # AsynchronousBreak() (+ a loopback packet) from another. Runs as a plain
   # functional test on POSIX; with -DOSCTAP_TSAN=ON it is built under
@@ -104,7 +110,7 @@ if(OSCPACK_BUILD_EXAMPLES)
     # TCP segments to exercise deframer reassembly). Both SKIP gracefully if the
     # environment forbids loopback networking. POSIX-only (std::thread + sockets);
     # also built under the TSan job to vet Run() vs AsynchronousBreak().
-    foreach(socktest OscUdpTest OscTcpTest)
+    foreach(socktest OscUdpTest OscTcpTest OscMulticastTest)
       add_executable(${socktest} tests/${socktest}.cpp)
       target_link_libraries(${socktest} oscpack Threads::Threads)
       add_test(NAME ${socktest} COMMAND ${socktest})

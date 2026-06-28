@@ -48,6 +48,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>   // steady_clock for GetCurrentTimeMs()
 #include <cstring> // for memset
 #include <stdexcept>
 #include <vector>
@@ -139,6 +140,26 @@ public:
 
     char reuseAddr = (char)((allowReuse) ? 1 : 0); // char on win32
     setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &reuseAddr, sizeof(reuseAddr));
+  }
+
+  void JoinMulticastGroup( const IpEndpointName& multicastGroup )
+  {
+    struct ip_mreq mreq;
+    std::memset( &mreq, 0, sizeof(mreq) );
+    mreq.imr_multiaddr.s_addr = htonl( multicastGroup.address );
+    mreq.imr_interface.s_addr = INADDR_ANY; // default interface
+    if( setsockopt( socket_, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const char*)&mreq, sizeof(mreq) ) == SOCKET_ERROR )
+      throw std::runtime_error( "unable to join multicast group\n" );
+  }
+
+  void LeaveMulticastGroup( const IpEndpointName& multicastGroup )
+  {
+    struct ip_mreq mreq;
+    std::memset( &mreq, 0, sizeof(mreq) );
+    mreq.imr_multiaddr.s_addr = htonl( multicastGroup.address );
+    mreq.imr_interface.s_addr = INADDR_ANY;
+    if( setsockopt( socket_, IPPROTO_IP, IP_DROP_MEMBERSHIP, (const char*)&mreq, sizeof(mreq) ) == SOCKET_ERROR )
+      throw std::runtime_error( "unable to leave multicast group\n" );
   }
 
   IpEndpointName LocalEndpointFor( const IpEndpointName& remoteEndpoint ) const
@@ -295,8 +316,11 @@ class SocketReceiveMultiplexerImplementation {
 
   double GetCurrentTimeMs() const
   {
-    return timeGetTime(); // FIXME: bad choice if you want to run for more than 40 days
-    }
+    // std::chrono::steady_clock (matches the posix backend): monotonic and 64-bit,
+    // so unlike the old timeGetTime() it does not wrap after ~49 days.
+    using namespace std::chrono;
+    return (double)duration_cast<milliseconds>( steady_clock::now().time_since_epoch() ).count();
+  }
 
 public:
     SocketReceiveMultiplexerImplementation()

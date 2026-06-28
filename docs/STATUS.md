@@ -77,9 +77,11 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
 - **`OSCTAP_REALTIME` marks the realtime hot path** (`OscTypes.h`). It is
   `noexcept [[clang::nonblocking]]` on Clang ≥ 20 and a **no-op everywhere else**, so it
   must stay applied only to genuinely allocation-/throw-free functions — the read/iterate
-  path over a *known-valid* message. **Do not annotate anything that can throw or allocate**
-  (message construction/`Init()`, checked accessors, `AsBoolUnchecked`/`AsBlobUnchecked`,
-  serialization): the Clang-20 RTSan job (`-DOSCTAP_RTSAN=ON`) will fail it both at runtime
+  path over a *known-valid* message. Every `*Unchecked` read accessor (incl. `AsBoolUnchecked`
+  and `AsBlobUnchecked`, which trust the validation done at construction) is throw-free and
+  carries `OSCTAP_REALTIME`. **Do not annotate anything that can throw or allocate** (message
+  construction/`Init()`, the *checked* accessors, serialization's overflow check): the
+  Clang-20 RTSan job (`-DOSCTAP_RTSAN=ON`) will fail it both at runtime
   (`-fsanitize=realtime`) and statically (`-Wfunction-effects -Werror`).
   `tests/OscRealtimeTest.cpp` is the guard and also runs as a plain functional test on the
   rest of the matrix. Local RTSan needs Clang ≥ 20 (`apt-get install clang-20 libclang-rt-20-dev`).
@@ -161,6 +163,10 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
   socket (no `pipe()` on Windows). NB the TCP backend headers must be **self-contained**
   (they `#include <osctap/ip/IpEndpointName.h>` explicitly) — including `TcpSocket.h`
   without `UdpSocket.h` first previously failed on win32; the Wine job guards that.
+- **Multicast receive**: `UdpSocket::JoinMulticastGroup()`/`LeaveMulticastGroup()`
+  (IP_ADD/DROP_MEMBERSHIP) on both backends. `OscMulticastTest` (POSIX-only, skip-
+  resilient like the other socket tests; also Wine-tested on win32) joins a group, sends
+  OSC to it, and asserts receipt. Bind the socket to the port *before* joining.
 - **Socket loopback tests** (`OscUdpTest`, `OscTcpTest`, POSIX-only): real client+
   server asserting that messages arrive and decode. They **SKIP** (print a notice,
   exit 0) if the environment denies loopback networking, so they don't false-fail on
@@ -228,6 +234,7 @@ See `ROADMAP.md` Phase 1 for the complete list, the sanitizer strategy, and rati
   renamed from `tap/oscpack`; old URLs redirect.
 - The README CI badge tracks the **default branch**; it lights up once this work merges
   to the default branch.
-- Phase 1 milestones/issues are **not yet created**. The plan (per the locked decision)
-  is: `ROADMAP.md` is the source of truth, decomposed into GitHub milestones/issues for
-  tracking.
+- Phase 1/2 work is tracked as GitHub **issues** (#3–#8 for Phase 1; #14–#19 for Phase 2),
+  with `ROADMAP.md` as the source of truth (the locked decision). The **"Phase 2 — Reach"
+  milestone object** is still an owner action — the GitHub MCP tooling can't create
+  milestones.
