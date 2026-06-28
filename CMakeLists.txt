@@ -110,7 +110,7 @@ if(OSCPACK_BUILD_EXAMPLES)
     # TCP segments to exercise deframer reassembly). Both SKIP gracefully if the
     # environment forbids loopback networking. POSIX-only (std::thread + sockets);
     # also built under the TSan job to vet Run() vs AsynchronousBreak().
-    foreach(socktest OscUdpTest OscTcpTest)
+    foreach(socktest OscUdpTest OscTcpTest OscMulticastTest)
       add_executable(${socktest} tests/${socktest}.cpp)
       target_link_libraries(${socktest} oscpack Threads::Threads)
       add_test(NAME ${socktest} COMMAND ${socktest})

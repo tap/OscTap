@@ -138,6 +138,21 @@ class UdpSocket{
         impl_.SetAllowReuse( allowReuse );
     }
 
+    // Join (or later leave) an IPv4 multicast group on this socket so it receives
+    // datagrams sent to that group address (224.0.0.0 .. 239.255.255.255). Bind()
+    // the socket to the listening port first; the group is taken from the
+    // IpEndpointName and the default interface is used. Closing the socket leaves
+    // any joined groups automatically, so LeaveMulticastGroup() is only needed to
+    // stop receiving a group while keeping the socket open.
+    void JoinMulticastGroup( const IpEndpointName& multicastGroup )
+    {
+        impl_.JoinMulticastGroup( multicastGroup );
+    }
+    void LeaveMulticastGroup( const IpEndpointName& multicastGroup )
+    {
+        impl_.LeaveMulticastGroup( multicastGroup );
+    }
+
 
     // The socket is created in an unbound, unconnected state
     // such a socket can only be used to send to an arbitrary

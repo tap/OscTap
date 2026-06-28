@@ -136,6 +136,9 @@ Abstract base: `virtual void ProcessPacket(const char* data, int size, const IpE
 - `UdpTransmitSocket(const IpEndpointName& remote)` — `Send(data, size)`, `SendTo(to, data, size)`.
 - `UdpReceiveSocket`, and `UdpListeningReceiveSocket(local, PacketListener*)` —
   `Run()` (blocks), `Break()`, `AsynchronousBreak()`, `int LocalPort()`.
+- **Multicast** (any UDP socket, after `Bind()`): `JoinMulticastGroup(const IpEndpointName&)`
+  / `LeaveMulticastGroup(...)` — IP_ADD/DROP_MEMBERSHIP for an IPv4 group
+  (224.0.0.0–239.255.255.255). Closing the socket leaves joined groups automatically.
 - `SocketReceiveMultiplexer` — multiple sockets/timers in one `Run()` loop
   (`AttachSocketListener`, `AttachPeriodicTimerListener`, …).
 
