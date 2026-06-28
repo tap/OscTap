@@ -116,6 +116,14 @@ public:
             throw std::runtime_error("unable to create udp socket\n");
         }
 
+#ifdef SO_NOSIGPIPE
+        // macOS / BSD: a send() to an unreachable destination (e.g. an unrouted
+        // multicast group) raises SIGPIPE and would kill the process. Suppress it
+        // so send() returns an error instead, mirroring the TCP backend.
+        int noSigpipe = 1;
+        setsockopt( socket_, SOL_SOCKET, SO_NOSIGPIPE, &noSigpipe, sizeof(noSigpipe) );
+#endif
+
         std::memset( &sendToAddr_, 0, sizeof(sendToAddr_) );
         sendToAddr_.sin_family = AF_INET;
     }

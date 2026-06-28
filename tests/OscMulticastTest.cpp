@@ -15,6 +15,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -48,6 +49,13 @@ int failures = 0;
 
 int main()
 {
+#ifndef _WIN32
+    // A multicast send to an unrouted group can raise SIGPIPE on macOS/BSD; ignore
+    // it so the send merely fails and the test SKIPs instead of being killed. (The
+    // UDP backend also sets SO_NOSIGPIPE; this is belt-and-suspenders.)
+    std::signal( SIGPIPE, SIG_IGN );
+#endif
+
     // Administratively-scoped multicast group (239.0.0.0/8).
     const int A = 239, B = 7, C = 7, D = 7;
 
