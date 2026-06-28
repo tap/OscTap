@@ -275,7 +275,10 @@ struct AttachedTimerListener{
 };
 
 
-static bool CompareScheduledTimerCalls(
+// inline (not static) to match the posix backend: a static function is internal
+// to each TU and trips MSVC C4505 in translation units that include this header
+// but never instantiate the multiplexer's timer sort (e.g. a transmit-only TU).
+inline bool CompareScheduledTimerCalls(
     const std::pair< double, AttachedTimerListener > & lhs, const std::pair< double, AttachedTimerListener > & rhs )
 {
   return lhs.first < rhs.first;

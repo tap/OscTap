@@ -121,15 +121,17 @@ if(OSCPACK_BUILD_EXAMPLES)
 
   # Canonical oscpack examples, compile-checked so they can't bit-rot (they use
   # the deprecated oscpack:: alias on purpose). Not run -- they bind sockets /
-  # block on input; see demos/ for the modern, tested equivalents.
-  add_executable(SimpleSend examples/SimpleSend.cpp)
-  target_link_libraries(SimpleSend oscpack)
-
-  add_executable(SimpleReceive examples/SimpleReceive.cpp)
-  target_link_libraries(SimpleReceive oscpack)
-
-  add_executable(OscDump examples/OscDump.cpp)
-  target_link_libraries(OscDump oscpack)
+  # block on input; see demos/ for the modern, tested equivalents. On MSVC they
+  # turn /WX off (like Win32SocketSmoke): they pull in the win32 socket backend,
+  # whose /W4 surface is not yet audited (a tracked follow-up). On GCC/Clang they
+  # keep -Werror (they build clean there).
+  foreach(example SimpleSend SimpleReceive OscDump)
+    add_executable(${example} examples/${example}.cpp)
+    target_link_libraries(${example} oscpack)
+    if(MSVC AND OSCTAP_WARNINGS_AS_ERRORS)
+      target_compile_options(${example} PRIVATE /WX-)
+    endif()
+  endforeach()
 endif()
 
 # Freestanding / embedded profile (Phase 2 "Reach"). Builds a single smoke test
