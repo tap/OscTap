@@ -1,0 +1,30 @@
+# OscTap-local Tap House Rules — naming DISABLED (documented exception).
+#
+# OscTap is a drop-in source-compatible continuation of oscpack, so its public
+# API deliberately keeps oscpack's original identifiers: PascalCase types and
+# methods (ReceivedMessage, OutboundPacketStream, BeginBundle(), AsFloat()) and
+# trailing-underscore data members (size_, value_). Renaming them to the house
+# snake_case/m_ scheme would break the compatibility that is the library's
+# reason to exist, so the naming half of the house rules does NOT apply here.
+# See TapHouse STYLE.md "Repo exception — OscTap (drop-in legacy continuation)".
+#
+# This file therefore intentionally DIVERGES from the canonical TapHouse
+# .clang-tidy (it drops readability-identifier-naming) and OscTap's CI runs a
+# format-only style gate (.github/workflows/style.yml) rather than the shared
+# drift-check.yml, which requires the three configs to be byte-identical.
+#
+# The LAYOUT half is still fully adopted via the verbatim .clang-format, and
+# mandatory braces around every control-flow body are kept below.
+#
+# NOTE: WarningsAsErrors is intentionally NOT set here so local runs only warn.
+Checks: >
+  -*,
+  readability-braces-around-statements
+
+# The library headers live under osctap/; tests under tests/.
+HeaderFilterRegex: '.*/(osctap|tests)/.*'
+
+CheckOptions:
+  # --- Mandatory braces: brace every control-flow body, even one-liners ---
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '0'

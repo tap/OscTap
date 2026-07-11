@@ -38,9 +38,13 @@
 #if !defined(WIN32_LEAN_AND_MEAN)
 #define WIN32_LEAN_AND_MEAN
 #endif
+// clang-format off
+// Winsock ordering is load-bearing: winsock2.h must precede windows.h, and
+// mmsystem.h needs windows.h first. Guarded so include-regroup can't sort it.
 #include <winsock2.h>   // this must come first to prevent errors with MSVC7
 #include <windows.h>
 #include <mmsystem.h>   // for timeGetTime()
+// clang-format on
 
 #ifndef WINCE
 #include <signal.h>
