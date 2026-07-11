@@ -56,11 +56,11 @@
    else leaves the normal throwing behaviour in place. Force it explicitly by
    pre-defining OSCTAP_HAS_EXCEPTIONS to 0 or 1 on the command line. */
 #ifndef OSCTAP_HAS_EXCEPTIONS
-#  if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || (defined(_MSC_VER) && defined(_CPPUNWIND))
-#    define OSCTAP_HAS_EXCEPTIONS 1
-#  else
-#    define OSCTAP_HAS_EXCEPTIONS 0
-#  endif
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || (defined(_MSC_VER) && defined(_CPPUNWIND))
+#define OSCTAP_HAS_EXCEPTIONS 1
+#else
+#define OSCTAP_HAS_EXCEPTIONS 0
+#endif
 #endif
 
 /* --- OSCTAP_FREESTANDING ----------------------------------------------------
@@ -84,23 +84,25 @@
    before including any OscTap header -- it receives the exception's .what()
    string and must not return. */
 #if OSCTAP_HAS_EXCEPTIONS
-#  define OSCTAP_THROW(EXC) throw EXC
+#define OSCTAP_THROW(EXC) throw EXC
 #else
-#  if defined(OSCTAP_FATAL_HANDLER)
-#    define OSCTAP_THROW(EXC) (OSCTAP_FATAL_HANDLER((EXC).what()))
-#  else
-#    include <cstdlib> // std::abort
+#if defined(OSCTAP_FATAL_HANDLER)
+#define OSCTAP_THROW(EXC) (OSCTAP_FATAL_HANDLER((EXC).what()))
+#else
+#include <cstdlib> // std::abort
 namespace osctap {
-namespace detail {
-// Default fatal handler used when exceptions are disabled and the integrator
-// has not supplied OSCTAP_FATAL_HANDLER. Marked [[noreturn]] so the compiler
-// knows the post-validation code is unreachable (no spurious "control reaches
-// end of non-void function" diagnostics at the former throw sites).
-[[noreturn]] inline void OscFatalError(const char* /*what*/) { std::abort(); }
-} // namespace detail
+    namespace detail {
+        // Default fatal handler used when exceptions are disabled and the integrator
+        // has not supplied OSCTAP_FATAL_HANDLER. Marked [[noreturn]] so the compiler
+        // knows the post-validation code is unreachable (no spurious "control reaches
+        // end of non-void function" diagnostics at the former throw sites).
+        [[noreturn]] inline void OscFatalError(const char* /*what*/) {
+            std::abort();
+        }
+    } // namespace detail
 } // namespace osctap
-#    define OSCTAP_THROW(EXC) (::osctap::detail::OscFatalError((EXC).what()))
-#  endif
+#define OSCTAP_THROW(EXC) (::osctap::detail::OscFatalError((EXC).what()))
+#endif
 #endif
 
 #endif /* INCLUDED_OSCTAP_OSCCONFIG_H */

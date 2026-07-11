@@ -16,46 +16,42 @@
     is needed. (POSIX only -- the dedicated TSan job runs on Linux.)
 */
 
-#include "ip/UdpSocket.h"
-#include "ip/IpEndpointName.h"
-#include "ip/PacketListener.h"
-
 #include <atomic>
 #include <chrono>
 #include <exception>
 #include <iostream>
 #include <thread>
 
+#include "ip/IpEndpointName.h"
+#include "ip/PacketListener.h"
+#include "ip/UdpSocket.h"
+
 using namespace osctap;
 
 namespace {
-class CountingListener : public PacketListener {
-  public:
-    std::atomic<int> packets{ 0 };
-    void ProcessPacket( const char * /*data*/, int /*size*/,
-                        const IpEndpointName & /*remoteEndpoint*/ ) override
-    {
-        packets.fetch_add( 1, std::memory_order_relaxed );
-    }
-};
+    class CountingListener : public PacketListener {
+      public:
+        std::atomic<int> packets{0};
+        void ProcessPacket(const char* /*data*/, int /*size*/, const IpEndpointName& /*remoteEndpoint*/) override {
+            packets.fetch_add(1, std::memory_order_relaxed);
+        }
+    };
 } // namespace
 
-int main()
-{
+int main() {
     CountingListener listener;
 
     // Bind a receive socket to loopback on an OS-assigned port (4-octet ctor
     // avoids a DNS lookup); LocalPort() reports the chosen port.
-    UdpListeningReceiveSocket receiver(
-        IpEndpointName( 127, 0, 0, 1, 0 ), &listener );
-    const int port = receiver.LocalPort();
+    UdpListeningReceiveSocket receiver(IpEndpointName(127, 0, 0, 1, 0), &listener);
+    const int                 port = receiver.LocalPort();
 
     // Run the receive loop on its own thread; it blocks in select().
-    std::atomic<bool> finished{ false };
-    std::thread runner( [&] {
+    std::atomic<bool> finished{false};
+    std::thread       runner([&] {
         receiver.Run();
-        finished.store( true, std::memory_order_release );
-    } );
+        finished.store(true, std::memory_order_release);
+    });
 
     // Best-effort: send one packet so ProcessPacket() runs on the receive thread
     // concurrently with this one (exercises the receive path, not just the
@@ -66,11 +62,12 @@ int main()
     // asserted.
     bool sent = false;
     try {
-        UdpTransmitSocket sender( IpEndpointName( 127, 0, 0, 1, port ) );
-        const char ping[] = { '/','p',0,0, ',',0,0,0 }; // minimal valid OSC message
-        sender.Send( ping, sizeof( ping ) );
+        UdpTransmitSocket sender(IpEndpointName(127, 0, 0, 1, port));
+        const char        ping[] = {'/', 'p', 0, 0, ',', 0, 0, 0}; // minimal valid OSC message
+        sender.Send(ping, sizeof(ping));
         sent = true;
-    } catch( const std::exception & ) {
+    }
+    catch (const std::exception&) {
         // networking restricted in this environment; skip the receive coverage.
     }
 
@@ -78,23 +75,23 @@ int main()
     // ProcessPacket() really does run concurrently before we stop the loop. The
     // wait is capped so a dropped datagram can't hang the test -- termination is
     // driven by the break loop below regardless.
-    if( sent ){
-        for( int i = 0; i < 200 && listener.packets.load( std::memory_order_relaxed ) == 0; ++i )
-            std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+    if (sent) {
+        for (int i = 0; i < 200 && listener.packets.load(std::memory_order_relaxed) == 0; ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     // Stop Run() from this thread. Run() resets its break flag when it starts, so
     // a single AsynchronousBreak() could race ahead of that reset and be missed;
     // signalling in a loop until the run thread returns is race-free and is
     // guaranteed to terminate. Repeated breaks are harmless.
-    while( !finished.load( std::memory_order_acquire ) ){
+    while (!finished.load(std::memory_order_acquire)) {
         receiver.AsynchronousBreak();
-        std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     runner.join();
 
-    std::cout << "concurrency test: Run() vs AsynchronousBreak() OK ("
-              << listener.packets.load() << " packet(s) received)\n";
+    std::cout << "concurrency test: Run() vs AsynchronousBreak() OK (" << listener.packets.load()
+              << " packet(s) received)\n";
     return 0;
 }

@@ -14,60 +14,58 @@
     Only IpEndpointName string formatting actually runs.
 */
 
-#include "ip/UdpSocket.h"
-#include "ip/TcpSocket.h"
+#include <cstdio>
+
 #include "ip/IpEndpointName.h"
 #include "ip/PacketListener.h"
+#include "ip/TcpSocket.h"
+#include "ip/UdpSocket.h"
 #include "osc/OscOutboundPacketStream.h"
-
-#include <cstdio>
 
 namespace {
 
-class NullListener : public osctap::PacketListener {
-public:
-    void ProcessPacket( const char *, int, const osctap::IpEndpointName & ) override {}
-};
+    class NullListener : public osctap::PacketListener {
+      public:
+        void ProcessPacket(const char*, int, const osctap::IpEndpointName&) override {}
+    };
 
-// Defined and ODR-used (its address is taken below) but never executed on CI.
-// Forces the win32 UdpSocket / SocketReceiveMultiplexer template members -- the
-// ctor, Bind/SendTo/Send, Run/AsynchronousBreak, and the getaddrinfo-based
-// GetHostByName -- to compile and link.
-void exercise_win32_backend()
-{
-    osctap::IpEndpointName ep( "127.0.0.1", 9000 );  // -> GetHostByName -> getaddrinfo
+    // Defined and ODR-used (its address is taken below) but never executed on CI.
+    // Forces the win32 UdpSocket / SocketReceiveMultiplexer template members -- the
+    // ctor, Bind/SendTo/Send, Run/AsynchronousBreak, and the getaddrinfo-based
+    // GetHostByName -- to compile and link.
+    void exercise_win32_backend() {
+        osctap::IpEndpointName ep("127.0.0.1", 9000); // -> GetHostByName -> getaddrinfo
 
-    osctap::UdpTransmitSocket tx( ep );
-    char buf[8] = { 0 };
-    tx.Send( buf, sizeof(buf) );
+        osctap::UdpTransmitSocket tx(ep);
+        char                      buf[8] = {0};
+        tx.Send(buf, sizeof(buf));
 
-    NullListener listener;
-    osctap::UdpListeningReceiveSocket rx(
-        osctap::IpEndpointName( osctap::IpEndpointName::ANY_ADDRESS, 9000 ), &listener );
-    rx.AsynchronousBreak();
+        NullListener                      listener;
+        osctap::UdpListeningReceiveSocket rx(osctap::IpEndpointName(osctap::IpEndpointName::ANY_ADDRESS, 9000),
+                                             &listener);
+        rx.AsynchronousBreak();
 
-    // TCP backend (ip/win32/TcpSocket.h): client Send + connection-aware server.
-    osctap::TcpTransmitSocket tcpTx( ep );
-    tcpTx.Send( buf, sizeof(buf) );
+        // TCP backend (ip/win32/TcpSocket.h): client Send + connection-aware server.
+        osctap::TcpTransmitSocket tcpTx(ep);
+        tcpTx.Send(buf, sizeof(buf));
 
-    osctap::TcpListeningReceiveSocket tcpRx(
-        osctap::IpEndpointName( osctap::IpEndpointName::ANY_ADDRESS, 9001 ), &listener );
-    tcpRx.Run();
-    tcpRx.AsynchronousBreak();
-}
+        osctap::TcpListeningReceiveSocket tcpRx(osctap::IpEndpointName(osctap::IpEndpointName::ANY_ADDRESS, 9001),
+                                                &listener);
+        tcpRx.Run();
+        tcpRx.AsynchronousBreak();
+    }
 
 } // namespace
 
-int main( int argc, char ** /*argv*/ )
-{
+int main(int argc, char** /*argv*/) {
     // Actually runs (no network): exercise IpEndpointName formatting.
-    char s[ osctap::IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH ];
-    osctap::IpEndpointName( 127, 0, 0, 1, 9000 ).AddressAndPortAsString( s );
-    std::printf( "win32 socket smoke: %s\n", s );
+    char s[osctap::IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];
+    osctap::IpEndpointName(127, 0, 0, 1, 9000).AddressAndPortAsString(s);
+    std::printf("win32 socket smoke: %s\n", s);
 
     // ODR-use the socket exercise so it links, but never call it on CI.
     void (*fn)() = &exercise_win32_backend;
-    if( argc == 0x7fffffff )   // never true; opaque to the optimiser
+    if (argc == 0x7fffffff) // never true; opaque to the optimiser
         fn();
 
     return 0;

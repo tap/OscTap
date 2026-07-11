@@ -1,51 +1,48 @@
 #pragma once
-#include <netdb.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <cstring>
 #include <cstdint>
-namespace osctap
-{
+#include <cstring>
+
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+namespace osctap {
     // in general NetworkInitializer is only used internally, but if you're
     // application creates multiple sockets from different threads at runtime you
     // should instantiate one of these in main just to make sure the networking
     // layer is initialized.
     class NetworkInitializer {
-    public:
+      public:
         NetworkInitializer() {}
         ~NetworkInitializer() {}
     };
 
     // return ip address of host name in host byte order
-    inline unsigned long GetHostByName(const char *name)
-    {
-      unsigned long result = 0;
+    inline unsigned long GetHostByName(const char* name) {
+        unsigned long result = 0;
 
-      addrinfo hints = {};
-      hints.ai_family = AF_INET;
-      hints.ai_socktype = SOCK_DGRAM;
-      hints.ai_protocol = IPPROTO_UDP;
+        addrinfo hints    = {};
+        hints.ai_family   = AF_INET;
+        hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = IPPROTO_UDP;
 
-      addrinfo* ai{};
-      const int err = getaddrinfo(name, nullptr, &hints, &ai);
+        addrinfo* ai{};
+        const int err = getaddrinfo(name, nullptr, &hints, &ai);
 
-      if (err != 0)
-      {
-        freeaddrinfo(ai);
-        return 0;
-      }
+        if (err != 0) {
+            freeaddrinfo(ai);
+            return 0;
+        }
 
-      if(ai)
-      {
-        auto remote = reinterpret_cast<struct sockaddr_in *>(ai->ai_addr);
-        // s_addr is a 32-bit network-order address; ntohl takes/returns uint32_t.
-        result = ntohl(static_cast<uint32_t>(remote->sin_addr.s_addr));
+        if (ai) {
+            auto remote = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
+            // s_addr is a 32-bit network-order address; ntohl takes/returns uint32_t.
+            result = ntohl(static_cast<uint32_t>(remote->sin_addr.s_addr));
 
-        freeaddrinfo(ai);
-      }
-      return result;
+            freeaddrinfo(ai);
+        }
+        return result;
     }
-}
+} // namespace osctap
 
 // Backwards-compatibility alias: this library was formerly named oscpack.
 // Existing code that uses the oscpack:: namespace continues to compile.

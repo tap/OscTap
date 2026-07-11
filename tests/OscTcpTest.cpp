@@ -9,11 +9,6 @@
     server with AsynchronousBreak() from the main thread.
 */
 
-#include "ip/TcpSocket.h"
-#include "ip/IpEndpointName.h"
-#include "osc/OscPacketListener.h"
-#include "osc/OscOutboundPacketStream.h"
-
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -22,36 +17,47 @@
 #include <thread>
 #include <vector>
 
+#include "ip/IpEndpointName.h"
+#include "ip/TcpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscPacketListener.h"
+
 namespace {
 
-class RecordingListener : public osctap::OscPacketListener {
-public:
-    std::atomic<int> count{ 0 };
-    std::vector<std::string> addresses; // written by server thread, read after join
-    std::vector<int>         sizes;     // payload size hint per message
+    class RecordingListener : public osctap::OscPacketListener {
+      public:
+        std::atomic<int>         count{0};
+        std::vector<std::string> addresses; // written by server thread, read after join
+        std::vector<int>         sizes;     // payload size hint per message
 
-protected:
-    void ProcessMessage( const osctap::ReceivedMessage& m, const osctap::IpEndpointName& ) override
-    {
-        addresses.emplace_back( m.AddressPattern() );
-        int sz = 0;
-        auto a = m.ArgumentsBegin();
-        if( a != m.ArgumentsEnd() ){
-            if( a->IsInt32() )       sz = a->AsInt32Unchecked();
-            else if( a->IsString() ) sz = (int)std::strlen( a->AsStringUnchecked() );
+      protected:
+        void ProcessMessage(const osctap::ReceivedMessage& m, const osctap::IpEndpointName&) override {
+            addresses.emplace_back(m.AddressPattern());
+            int  sz = 0;
+            auto a  = m.ArgumentsBegin();
+            if (a != m.ArgumentsEnd()) {
+                if (a->IsInt32())
+                    sz = a->AsInt32Unchecked();
+                else if (a->IsString())
+                    sz = (int)std::strlen(a->AsStringUnchecked());
+            }
+            sizes.push_back(sz);
+            count.fetch_add(1, std::memory_order_relaxed);
         }
-        sizes.push_back( sz );
-        count.fetch_add( 1, std::memory_order_relaxed );
-    }
-};
+    };
 
-int failures = 0;
-#define CHECK(c) do{ if(!(c)){ std::printf("FAIL line %d: %s\n", __LINE__, #c); ++failures; } }while(0)
+    int failures = 0;
+#define CHECK(c)                                                                                                       \
+    do {                                                                                                               \
+        if (!(c)) {                                                                                                    \
+            std::printf("FAIL line %d: %s\n", __LINE__, #c);                                                           \
+            ++failures;                                                                                                \
+        }                                                                                                              \
+    } while (0)
 
 } // namespace
 
-int main()
-{
+int main() {
     RecordingListener listener;
 
     // Bind the server to an OS-assigned loopback port, then discover it. A bind
@@ -59,73 +65,74 @@ int main()
     // CI) -> skip rather than fail, matching OscUdpTest / OscConcurrencyTest.
     osctap::TcpListeningReceiveSocket* serverPtr = nullptr;
     try {
-        serverPtr = new osctap::TcpListeningReceiveSocket(
-            osctap::IpEndpointName( 127, 0, 0, 1, 0 ), &listener );
-    } catch( const std::exception& e ) {
-        std::printf( "OscTcpTest: SKIP (cannot bind loopback TCP: %s)\n", e.what() );
+        serverPtr = new osctap::TcpListeningReceiveSocket(osctap::IpEndpointName(127, 0, 0, 1, 0), &listener);
+    }
+    catch (const std::exception& e) {
+        std::printf("OscTcpTest: SKIP (cannot bind loopback TCP: %s)\n", e.what());
         return 0;
     }
     osctap::TcpListeningReceiveSocket& server = *serverPtr;
-    const int port = server.LocalEndpointFor( osctap::IpEndpointName( 127, 0, 0, 1, 0 ) ).port;
-    CHECK( port > 0 );
+    const int                          port   = server.LocalEndpointFor(osctap::IpEndpointName(127, 0, 0, 1, 0)).port;
+    CHECK(port > 0);
 
-    std::thread serverThread( [&]{ server.Run(); } );
+    std::thread serverThread([&] { server.Run(); });
 
     // Client: connect and send four messages. The last is large enough to be
     // split across TCP segments, forcing the server-side deframer to reassemble.
-    const std::string big( 4000, 'x' );
-    bool sent = false;
+    const std::string big(4000, 'x');
+    bool              sent = false;
     try {
-        osctap::TcpTransmitSocket client( osctap::IpEndpointName( 127, 0, 0, 1, port ) );
-        char buf[8192];
+        osctap::TcpTransmitSocket client(osctap::IpEndpointName(127, 0, 0, 1, port));
+        char                      buf[8192];
         {
-            osctap::OutboundPacketStream p( buf, sizeof(buf) );
-            p << osctap::BeginMessage( "/m1" ) << (int32_t)11 << osctap::EndMessage();
-            client.Send( p.Data(), p.Size() );
+            osctap::OutboundPacketStream p(buf, sizeof(buf));
+            p << osctap::BeginMessage("/m1") << (int32_t)11 << osctap::EndMessage();
+            client.Send(p.Data(), p.Size());
         }
         {
-            osctap::OutboundPacketStream p( buf, sizeof(buf) );
-            p << osctap::BeginMessage( "/m2" ) << (int32_t)22 << osctap::EndMessage();
-            client.Send( p.Data(), p.Size() );
+            osctap::OutboundPacketStream p(buf, sizeof(buf));
+            p << osctap::BeginMessage("/m2") << (int32_t)22 << osctap::EndMessage();
+            client.Send(p.Data(), p.Size());
         }
         {
-            osctap::OutboundPacketStream p( buf, sizeof(buf) );
-            p << osctap::BeginMessage( "/m3" ) << "hello" << osctap::EndMessage();
-            client.Send( p.Data(), p.Size() );
+            osctap::OutboundPacketStream p(buf, sizeof(buf));
+            p << osctap::BeginMessage("/m3") << "hello" << osctap::EndMessage();
+            client.Send(p.Data(), p.Size());
         }
         {
-            osctap::OutboundPacketStream p( buf, sizeof(buf) );
-            p << osctap::BeginMessage( "/big" ) << big.c_str() << osctap::EndMessage();
-            client.Send( p.Data(), p.Size() );
+            osctap::OutboundPacketStream p(buf, sizeof(buf));
+            p << osctap::BeginMessage("/big") << big.c_str() << osctap::EndMessage();
+            client.Send(p.Data(), p.Size());
         }
         sent = true;
-    } catch( const std::exception& e ) {
+    }
+    catch (const std::exception& e) {
         // Connect/send denied by the environment -> skip (not a library failure).
-        std::printf( "OscTcpTest: SKIP (loopback TCP send unavailable: %s)\n", e.what() );
+        std::printf("OscTcpTest: SKIP (loopback TCP send unavailable: %s)\n", e.what());
     }
 
     // Wait (bounded) for all four to arrive, then stop the server.
-    if( sent ){
-        for( int i = 0; i < 500 && listener.count.load() < 4; ++i )
-            std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+    if (sent) {
+        for (int i = 0; i < 500 && listener.count.load() < 4; ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     server.AsynchronousBreak();
     serverThread.join();
     delete serverPtr;
 
-    if( !sent )
+    if (!sent)
         return 0; // skipped: send path unavailable in this environment
 
-    CHECK( listener.count.load() == 4 );
-    if( listener.addresses.size() == 4 ){
-        CHECK( listener.addresses[0] == "/m1" && listener.sizes[0] == 11 );
-        CHECK( listener.addresses[1] == "/m2" && listener.sizes[1] == 22 );
-        CHECK( listener.addresses[2] == "/m3" && listener.sizes[2] == 5 );      // strlen("hello")
-        CHECK( listener.addresses[3] == "/big" && listener.sizes[3] == 4000 );  // reassembled
+    CHECK(listener.count.load() == 4);
+    if (listener.addresses.size() == 4) {
+        CHECK(listener.addresses[0] == "/m1" && listener.sizes[0] == 11);
+        CHECK(listener.addresses[1] == "/m2" && listener.sizes[1] == 22);
+        CHECK(listener.addresses[2] == "/m3" && listener.sizes[2] == 5);     // strlen("hello")
+        CHECK(listener.addresses[3] == "/big" && listener.sizes[3] == 4000); // reassembled
     }
 
-    if( failures == 0 )
-        std::printf( "OscTcpTest: OK (4 packets over TCP, incl. a reassembled 4000-byte message)\n" );
+    if (failures == 0)
+        std::printf("OscTcpTest: OK (4 packets over TCP, incl. a reassembled 4000-byte message)\n");
     return failures == 0 ? 0 : 1;
 }

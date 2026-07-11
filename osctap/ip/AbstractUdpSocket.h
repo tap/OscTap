@@ -39,217 +39,160 @@
 
 #include <cstring> // size_t
 
-#include "NetworkingUtils.h"
 #include "IpEndpointName.h"
+#include "NetworkingUtils.h"
 
+namespace osctap {
+    class PacketListener;
+    class TimerListener;
 
-namespace osctap
-{
-class PacketListener;
-class TimerListener;
+    namespace detail {
+        template <typename Impl_T>
+        class SocketReceiveMultiplexer {
+            typename Impl_T::socket_multiplexer_t impl_;
 
-namespace detail
-{
-template<typename Impl_T>
-class SocketReceiveMultiplexer
-{
-    typename Impl_T::socket_multiplexer_t impl_;
+          public:
+            using implementation_t = Impl_T;
+            using udp_socket_t     = typename Impl_T::udp_socket_t;
 
-  public:
-    using implementation_t = Impl_T;
-    using udp_socket_t = typename Impl_T::udp_socket_t;
+            SocketReceiveMultiplexer() = default;
 
-    SocketReceiveMultiplexer() = default;
+            // only call the attach/detach methods _before_ calling Run
 
-    // only call the attach/detach methods _before_ calling Run
+            // only one listener per socket, each socket at most once
+            void AttachSocketListener(udp_socket_t* socket, PacketListener* listener) {
+                impl_.AttachSocketListener(socket, listener);
+            }
+            void DetachSocketListener(udp_socket_t* socket, PacketListener* listener) {
+                impl_.DetachSocketListener(socket, listener);
+            }
 
-    // only one listener per socket, each socket at most once
-    void AttachSocketListener( udp_socket_t *socket, PacketListener *listener )
-    {
-      impl_.AttachSocketListener( socket, listener );
-    }
-    void DetachSocketListener( udp_socket_t *socket, PacketListener *listener )
-    {
-      impl_.DetachSocketListener( socket, listener );
-    }
+            void AttachPeriodicTimerListener(int periodMilliseconds, TimerListener* listener) {
+                impl_.AttachPeriodicTimerListener(periodMilliseconds, listener);
+            }
+            void AttachPeriodicTimerListener(int initialDelayMilliseconds, int periodMilliseconds,
+                                             TimerListener* listener) {
+                impl_.AttachPeriodicTimerListener(initialDelayMilliseconds, periodMilliseconds, listener);
+            }
+            void DetachPeriodicTimerListener(TimerListener* listener) { impl_.DetachPeriodicTimerListener(listener); }
 
-    void AttachPeriodicTimerListener( int periodMilliseconds, TimerListener *listener )
-    {
-      impl_.AttachPeriodicTimerListener( periodMilliseconds, listener );
-    }
-    void AttachPeriodicTimerListener(
-        int initialDelayMilliseconds, int periodMilliseconds, TimerListener *listener )
-    {
-      impl_.AttachPeriodicTimerListener( initialDelayMilliseconds, periodMilliseconds, listener );
-    }
-    void DetachPeriodicTimerListener( TimerListener *listener )
-    {
-      impl_.DetachPeriodicTimerListener( listener );
-    }
+            void Run() { impl_.Run(); }     // loop and block processing messages indefinitely
+            void Break() { impl_.Break(); } // call this from a listener to exit once the listener returns
+            void AsynchronousBreak() {
+                impl_.AsynchronousBreak();
+            } // call this from another thread or signal handler to exit the Run() state
+        };
 
-    void Run()
-    {
-      impl_.Run();
-    }      // loop and block processing messages indefinitely
-    void Break()
-    {
-      impl_.Break();
-    }    // call this from a listener to exit once the listener returns
-    void AsynchronousBreak()
-    {
-      impl_.AsynchronousBreak();
-    } // call this from another thread or signal handler to exit the Run() state
-};
+        template <typename Impl_T>
+        class UdpSocket {
+          protected:
+            typename Impl_T::udp_socket_t impl_;
 
+          public:
+            using implementation_t = typename Impl_T::udp_socket_t;
 
-template<typename Impl_T>
-class UdpSocket{
-  protected:
-    typename Impl_T::udp_socket_t impl_;
+            // Ctor throws std::runtime_error if there's a problem
+            // initializing the socket.
+            UdpSocket() = default;
 
-    public:
-    using implementation_t = typename Impl_T::udp_socket_t;
+            int LocalPort() const { return impl_.LocalPort(); }
 
-    // Ctor throws std::runtime_error if there's a problem
-    // initializing the socket.
-    UdpSocket() = default;
+            // Enable broadcast addresses (e.g. x.x.x.255)
+            // Sets SO_BROADCAST socket option.
+            void SetEnableBroadcast(bool enableBroadcast) { impl_.SetEnableBroadcast(enableBroadcast); }
 
-    int LocalPort() const
-    {
-      return impl_.LocalPort();
-    }
+            // Enable multiple listeners for a single port on same
+            // network interface*
+            // Sets SO_REUSEADDR (also SO_REUSEPORT on OS X).
+            // [*] The exact behavior of SO_REUSEADDR and
+            // SO_REUSEPORT is undefined for some common cases
+            // and may have drastically different behavior on different
+            // operating systems.
+            void SetAllowReuse(bool allowReuse) { impl_.SetAllowReuse(allowReuse); }
 
-    // Enable broadcast addresses (e.g. x.x.x.255)
-    // Sets SO_BROADCAST socket option.
-    void SetEnableBroadcast( bool enableBroadcast )
-    {
-        impl_.SetEnableBroadcast( enableBroadcast );
-    }
+            // Join (or later leave) an IPv4 multicast group on this socket so it receives
+            // datagrams sent to that group address (224.0.0.0 .. 239.255.255.255). Bind()
+            // the socket to the listening port first; the group is taken from the
+            // IpEndpointName and the default interface is used. Closing the socket leaves
+            // any joined groups automatically, so LeaveMulticastGroup() is only needed to
+            // stop receiving a group while keeping the socket open.
+            void JoinMulticastGroup(const IpEndpointName& multicastGroup) { impl_.JoinMulticastGroup(multicastGroup); }
+            void LeaveMulticastGroup(const IpEndpointName& multicastGroup) {
+                impl_.LeaveMulticastGroup(multicastGroup);
+            }
 
-    // Enable multiple listeners for a single port on same
-    // network interface*
-    // Sets SO_REUSEADDR (also SO_REUSEPORT on OS X).
-    // [*] The exact behavior of SO_REUSEADDR and
-    // SO_REUSEPORT is undefined for some common cases
-    // and may have drastically different behavior on different
-    // operating systems.
-    void SetAllowReuse( bool allowReuse )
-    {
-        impl_.SetAllowReuse( allowReuse );
-    }
+            // The socket is created in an unbound, unconnected state
+            // such a socket can only be used to send to an arbitrary
+            // address using SendTo(). To use Send() you need to first
+            // connect to a remote endpoint using Connect(). To use
+            // ReceiveFrom you need to first bind to a local endpoint
+            // using Bind().
 
-    // Join (or later leave) an IPv4 multicast group on this socket so it receives
-    // datagrams sent to that group address (224.0.0.0 .. 239.255.255.255). Bind()
-    // the socket to the listening port first; the group is taken from the
-    // IpEndpointName and the default interface is used. Closing the socket leaves
-    // any joined groups automatically, so LeaveMulticastGroup() is only needed to
-    // stop receiving a group while keeping the socket open.
-    void JoinMulticastGroup( const IpEndpointName& multicastGroup )
-    {
-        impl_.JoinMulticastGroup( multicastGroup );
-    }
-    void LeaveMulticastGroup( const IpEndpointName& multicastGroup )
-    {
-        impl_.LeaveMulticastGroup( multicastGroup );
-    }
+            // Retrieve the local endpoint name when sending to 'to'
+            IpEndpointName LocalEndpointFor(const IpEndpointName& remoteEndpoint) const {
+                return impl_.LocalEndpointFor(remoteEndpoint);
+            }
 
+            // Connect to a remote endpoint which is used as the target
+            // for calls to Send()
+            void Connect(const IpEndpointName& remoteEndpoint) { impl_.Connect(remoteEndpoint); }
+            void Send(const char* data, std::size_t size) { impl_.Send(data, size); }
+            void SendTo(const IpEndpointName& remoteEndpoint, const char* data, std::size_t size) {
+                impl_.SendTo(remoteEndpoint, data, size);
+            }
 
-    // The socket is created in an unbound, unconnected state
-    // such a socket can only be used to send to an arbitrary
-    // address using SendTo(). To use Send() you need to first
-    // connect to a remote endpoint using Connect(). To use
-    // ReceiveFrom you need to first bind to a local endpoint
-    // using Bind().
+            // Bind a local endpoint to receive incoming data. Endpoint
+            // can be 'any' for the system to choose an endpoint
+            void Bind(const IpEndpointName& localEndpoint) { impl_.Bind(localEndpoint); }
+            bool IsBound() const { return impl_.IsBound(); }
 
-    // Retrieve the local endpoint name when sending to 'to'
-    IpEndpointName LocalEndpointFor( const IpEndpointName& remoteEndpoint ) const
-    {
-        return impl_.LocalEndpointFor( remoteEndpoint );
-    }
+            std::size_t ReceiveFrom(IpEndpointName& remoteEndpoint, char* data, std::size_t size) {
+                return impl_.ReceiveFrom(remoteEndpoint, data, size);
+            }
+        };
 
+        // convenience classes for transmitting and receiving
+        // they just call Connect and/or Bind in the ctor.
+        // note that you can still use a receive socket
+        // for transmitting etc
+        template <typename Impl_T>
+        class UdpTransmitSocket : public UdpSocket<Impl_T> {
+          public:
+            UdpTransmitSocket(const IpEndpointName& remoteEndpoint) { this->Connect(remoteEndpoint); }
+        };
 
-    // Connect to a remote endpoint which is used as the target
-    // for calls to Send()
-    void Connect( const IpEndpointName& remoteEndpoint )
-    {
-        impl_.Connect( remoteEndpoint );
-    }
-    void Send( const char *data, std::size_t size )
-    {
-        impl_.Send( data, size );
-    }
-    void SendTo( const IpEndpointName& remoteEndpoint, const char *data, std::size_t size )
-    {
-        impl_.SendTo( remoteEndpoint, data, size );
-    }
+        template <typename Impl_T>
+        class UdpReceiveSocket : public UdpSocket<Impl_T> {
+          public:
+            UdpReceiveSocket(const IpEndpointName& localEndpoint) { this->Bind(localEndpoint); }
+        };
 
-    // Bind a local endpoint to receive incoming data. Endpoint
-    // can be 'any' for the system to choose an endpoint
-    void Bind( const IpEndpointName& localEndpoint )
-    {
-        impl_.Bind( localEndpoint );
-    }
-    bool IsBound() const
-    {
-        return impl_.IsBound();
-    }
+        // UdpListeningReceiveSocket provides a simple way to bind one listener
+        // to a single socket without having to manually set up a SocketReceiveMultiplexer
 
-    std::size_t ReceiveFrom( IpEndpointName& remoteEndpoint, char *data, std::size_t size )
-    {
-        return impl_.ReceiveFrom( remoteEndpoint, data, size );
-    }
-};
+        template <typename Impl_T>
+        class UdpListeningReceiveSocket : public UdpSocket<Impl_T> {
+            SocketReceiveMultiplexer<Impl_T> mux_;
+            PacketListener*                  listener_;
 
+          public:
+            UdpListeningReceiveSocket(const IpEndpointName& localEndpoint, PacketListener* listener)
+                : listener_(listener) {
+                this->Bind(localEndpoint);
+                mux_.AttachSocketListener(&this->impl_, listener_);
+            }
 
-// convenience classes for transmitting and receiving
-// they just call Connect and/or Bind in the ctor.
-// note that you can still use a receive socket
-// for transmitting etc
-template<typename Impl_T>
-class UdpTransmitSocket : public UdpSocket<Impl_T>{
-  public:
-    UdpTransmitSocket( const IpEndpointName& remoteEndpoint )
-    { this->Connect( remoteEndpoint ); }
-};
+            ~UdpListeningReceiveSocket() { mux_.DetachSocketListener(&this->impl_, listener_); }
 
+            // see SocketReceiveMultiplexer above for the behaviour of these methods...
+            void Run() { mux_.Run(); }
+            void Break() { mux_.Break(); }
+            void AsynchronousBreak() { mux_.AsynchronousBreak(); }
+        };
 
-template<typename Impl_T>
-class UdpReceiveSocket : public UdpSocket<Impl_T>{
-  public:
-    UdpReceiveSocket( const IpEndpointName& localEndpoint )
-    { this->Bind( localEndpoint ); }
-};
+    } // namespace detail
 
-
-// UdpListeningReceiveSocket provides a simple way to bind one listener
-// to a single socket without having to manually set up a SocketReceiveMultiplexer
-
-template<typename Impl_T>
-class UdpListeningReceiveSocket : public UdpSocket<Impl_T>{
-    SocketReceiveMultiplexer<Impl_T> mux_;
-    PacketListener *listener_;
-  public:
-    UdpListeningReceiveSocket( const IpEndpointName& localEndpoint, PacketListener *listener )
-      : listener_( listener )
-    {
-      this->Bind( localEndpoint );
-      mux_.AttachSocketListener( &this->impl_, listener_ );
-    }
-
-    ~UdpListeningReceiveSocket()
-    { mux_.DetachSocketListener( &this->impl_, listener_ ); }
-
-    // see SocketReceiveMultiplexer above for the behaviour of these methods...
-    void Run() { mux_.Run(); }
-    void Break() { mux_.Break(); }
-    void AsynchronousBreak() { mux_.AsynchronousBreak(); }
-};
-
-}
-
-
-}
-
+} // namespace osctap
 
 // Backwards-compatibility alias: this library was formerly named oscpack.
 // Existing code that uses the oscpack:: namespace continues to compile.

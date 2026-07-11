@@ -41,60 +41,51 @@
     message argument.
 */
 
-
-#include <iostream>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
+#include <iostream>
 
 #if defined(__BORLANDC__) // workaround for BCB4 release build intrinsics bug
 namespace std {
-using ::__strcmp__;  // avoid error: E2316 '__strcmp__' is not a member of 'std'.
+    using ::__strcmp__; // avoid error: E2316 '__strcmp__' is not a member of 'std'.
 }
 #endif
 
-#include <osctap/osc/OscReceivedElements.h>
-#include <osctap/osc/OscPrintReceivedElements.h>
-
-#include <osctap/ip/UdpSocket.h>
 #include <osctap/ip/PacketListener.h>
+#include <osctap/ip/UdpSocket.h>
+#include <osctap/osc/OscPrintReceivedElements.h>
+#include <osctap/osc/OscReceivedElements.h>
 using namespace oscpack; // deprecated alias for osctap, intentionally exercised here
 
-class OscDumpPacketListener : public PacketListener{
-public:
-  virtual void ProcessPacket( const char *data, int size,
-      const IpEndpointName& remoteEndpoint )
-  {
-        (void) remoteEndpoint; // suppress unused parameter warning
+class OscDumpPacketListener : public PacketListener {
+  public:
+    virtual void ProcessPacket(const char* data, int size, const IpEndpointName& remoteEndpoint) {
+        (void)remoteEndpoint; // suppress unused parameter warning
 
-    std::cout << oscpack::ReceivedPacket( data, size );
-  }
+        std::cout << oscpack::ReceivedPacket(data, size);
+    }
 };
 
-int main(int argc, char* argv[])
-{
-  if( argc >= 2 && std::strcmp( argv[1], "-h" ) == 0 ){
+int main(int argc, char* argv[]) {
+    if (argc >= 2 && std::strcmp(argv[1], "-h") == 0) {
         std::cout << "usage: OscDump [port]\n";
         return 0;
     }
 
-  int port = 9998;
+    int port = 9998;
 
-  if( argc >= 2 )
-    port = std::atoi( argv[1] );
+    if (argc >= 2)
+        port = std::atoi(argv[1]);
 
-  OscDumpPacketListener listener;
-    UdpListeningReceiveSocket s(
-            IpEndpointName( IpEndpointName::ANY_ADDRESS, port ),
-            &listener );
+    OscDumpPacketListener     listener;
+    UdpListeningReceiveSocket s(IpEndpointName(IpEndpointName::ANY_ADDRESS, port), &listener);
 
-  std::cout << "listening for input on port " << port << "...\n";
-  std::cout << "press ctrl-c to end\n";
+    std::cout << "listening for input on port " << port << "...\n";
+    std::cout << "press ctrl-c to end\n";
 
-  s.Run();
+    s.Run();
 
-  std::cout << "finishing.\n";
+    std::cout << "finishing.\n";
 
     return 0;
 }
-
-
