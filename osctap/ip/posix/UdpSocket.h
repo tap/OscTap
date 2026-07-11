@@ -47,9 +47,6 @@
 #include <math.h>
 #include <netdb.h>
 #include <netinet/in.h> // for sockaddr_in
-#include <osctap/ip/AbstractUdpSocket.h>
-#include <osctap/ip/PacketListener.h>
-#include <osctap/ip/TimerListener.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -59,6 +56,10 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "ip/AbstractUdpSocket.h"
+#include "ip/PacketListener.h"
+#include "ip/TimerListener.h"
 
 namespace osctap {
 

@@ -51,10 +51,10 @@ namespace std {
 }
 #endif
 
-#include <osctap/ip/PacketListener.h>
-#include <osctap/ip/UdpSocket.h>
-#include <osctap/osc/OscPrintReceivedElements.h>
-#include <osctap/osc/OscReceivedElements.h>
+#include "ip/PacketListener.h"
+#include "ip/UdpSocket.h"
+#include "osc/OscPrintReceivedElements.h"
+#include "osc/OscReceivedElements.h"
 using namespace oscpack; // deprecated alias for osctap, intentionally exercised here
 
 class OscDumpPacketListener : public PacketListener {

@@ -57,9 +57,9 @@
 #include <stdexcept>
 #include <vector>
 
-#include <osctap/ip/NetworkingUtils.h>
-#include <osctap/ip/PacketListener.h>
-#include <osctap/ip/TimerListener.h>
+#include "ip/NetworkingUtils.h"
+#include "ip/PacketListener.h"
+#include "ip/TimerListener.h"
 
 typedef int socklen_t;
 

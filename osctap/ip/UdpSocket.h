@@ -1,7 +1,6 @@
 #pragma once
-#include <osctap/ip/NetworkingUtils.h>
-
 #include "AbstractUdpSocket.h"
+#include "ip/NetworkingUtils.h"
 
 #if defined(_WIN32)
 #include "win32/UdpSocket.h"

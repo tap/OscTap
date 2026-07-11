@@ -34,7 +34,7 @@
   requested that these non-binding requests be included whenever the
   above license is reproduced.
 */
-#include <osctap/ip/NetworkingUtils.h>
+#include "ip/NetworkingUtils.h"
 
 // clang-format off
 // Winsock ordering is load-bearing: winsock2.h must precede windows.h.
