@@ -41,92 +41,80 @@
 
 #include "NetworkingUtils.h"
 
-namespace osctap
-{
-class IpEndpointName
-{
-    static unsigned long GetHostByName( const char *s )
-    {
-      return osctap::GetHostByName(s);
-    }
+namespace osctap {
+    class IpEndpointName {
+        static unsigned long GetHostByName(const char* s) { return osctap::GetHostByName(s); }
 
-  public:
-    static const unsigned long ANY_ADDRESS = 0xFFFFFFFF;
-    static const int ANY_PORT = -1;
+      public:
+        static const unsigned long ANY_ADDRESS = 0xFFFFFFFF;
+        static const int           ANY_PORT    = -1;
 
-    IpEndpointName()
-      : address( ANY_ADDRESS ), port( ANY_PORT ) {}
-    IpEndpointName( int port_ )
-      : address( ANY_ADDRESS ), port( port_ ) {}
-    IpEndpointName( unsigned long ipAddress_, int port_ )
-      : address( ipAddress_ ), port( port_ ) {}
-    IpEndpointName( const char *addressName, int port_=ANY_PORT )
-      : address( GetHostByName( addressName ) )
-      , port( port_ ) {}
-    IpEndpointName( unsigned int addressA, unsigned int addressB, unsigned int addressC, unsigned int addressD, int port_=ANY_PORT )
-      : address( ( (addressA << 24) | (addressB << 16) | (addressC << 8) | addressD ) )
-      , port( port_ ) {}
+        IpEndpointName()
+            : address(ANY_ADDRESS)
+            , port(ANY_PORT) {}
+        IpEndpointName(int port_)
+            : address(ANY_ADDRESS)
+            , port(port_) {}
+        IpEndpointName(unsigned long ipAddress_, int port_)
+            : address(ipAddress_)
+            , port(port_) {}
+        IpEndpointName(const char* addressName, int port_ = ANY_PORT)
+            : address(GetHostByName(addressName))
+            , port(port_) {}
+        IpEndpointName(unsigned int addressA, unsigned int addressB, unsigned int addressC, unsigned int addressD,
+                       int port_ = ANY_PORT)
+            : address(((addressA << 24) | (addressB << 16) | (addressC << 8) | addressD))
+            , port(port_) {}
 
-    // address and port are maintained in host byte order here
-    unsigned long address;
-    int port;
+        // address and port are maintained in host byte order here
+        unsigned long address;
+        int           port;
 
-    bool IsMulticastAddress() const { return ((address >> 24) & 0xFF) >= 224 && ((address >> 24) & 0xFF) <= 239; }
+        bool IsMulticastAddress() const { return ((address >> 24) & 0xFF) >= 224 && ((address >> 24) & 0xFF) <= 239; }
 
-    enum { ADDRESS_STRING_LENGTH=17 };
-    void AddressAsString( char *s ) const
-    {
-      if( address == ANY_ADDRESS ){
-        std::snprintf( s, ADDRESS_STRING_LENGTH, "<any>" );
-      }else{
-        std::snprintf( s, ADDRESS_STRING_LENGTH, "%d.%d.%d.%d",
-                      (int)((address >> 24) & 0xFF),
-                      (int)((address >> 16) & 0xFF),
-                      (int)((address >> 8) & 0xFF),
-                      (int)(address & 0xFF) );
-      }
-    }
-
-    enum { ADDRESS_AND_PORT_STRING_LENGTH=23};
-    void AddressAndPortAsString( char *s ) const
-    {
-      if( port == ANY_PORT ){
-        if( address == ANY_ADDRESS ){
-          std::snprintf( s, ADDRESS_AND_PORT_STRING_LENGTH, "<any>:<any>" );
-        }else{
-          std::snprintf( s, ADDRESS_AND_PORT_STRING_LENGTH, "%d.%d.%d.%d:<any>",
-                        (int)((address >> 24) & 0xFF),
-                        (int)((address >> 16) & 0xFF),
-                        (int)((address >> 8) & 0xFF),
-                        (int)(address & 0xFF) );
+        enum { ADDRESS_STRING_LENGTH = 17 };
+        void AddressAsString(char* s) const {
+            if (address == ANY_ADDRESS) {
+                std::snprintf(s, ADDRESS_STRING_LENGTH, "<any>");
+            }
+            else {
+                std::snprintf(s, ADDRESS_STRING_LENGTH, "%d.%d.%d.%d", (int)((address >> 24) & 0xFF),
+                              (int)((address >> 16) & 0xFF), (int)((address >> 8) & 0xFF), (int)(address & 0xFF));
+            }
         }
-      }
-      else
-      {
-        if( address == ANY_ADDRESS ){
-          std::snprintf( s, ADDRESS_AND_PORT_STRING_LENGTH, "<any>:%d", port );
-        }else{
-          std::snprintf( s, ADDRESS_AND_PORT_STRING_LENGTH, "%d.%d.%d.%d:%d",
-                        (int)((address >> 24) & 0xFF),
-                        (int)((address >> 16) & 0xFF),
-                        (int)((address >> 8) & 0xFF),
-                        (int)(address & 0xFF),
-                        (int)port );
+
+        enum { ADDRESS_AND_PORT_STRING_LENGTH = 23 };
+        void AddressAndPortAsString(char* s) const {
+            if (port == ANY_PORT) {
+                if (address == ANY_ADDRESS) {
+                    std::snprintf(s, ADDRESS_AND_PORT_STRING_LENGTH, "<any>:<any>");
+                }
+                else {
+                    std::snprintf(s, ADDRESS_AND_PORT_STRING_LENGTH, "%d.%d.%d.%d:<any>", (int)((address >> 24) & 0xFF),
+                                  (int)((address >> 16) & 0xFF), (int)((address >> 8) & 0xFF), (int)(address & 0xFF));
+                }
+            }
+            else {
+                if (address == ANY_ADDRESS) {
+                    std::snprintf(s, ADDRESS_AND_PORT_STRING_LENGTH, "<any>:%d", port);
+                }
+                else {
+                    std::snprintf(s, ADDRESS_AND_PORT_STRING_LENGTH, "%d.%d.%d.%d:%d", (int)((address >> 24) & 0xFF),
+                                  (int)((address >> 16) & 0xFF), (int)((address >> 8) & 0xFF), (int)(address & 0xFF),
+                                  (int)port);
+                }
+            }
         }
-      }
+    };
+
+    inline bool operator==(const IpEndpointName& lhs, const IpEndpointName& rhs) {
+        return (lhs.address == rhs.address && lhs.port == rhs.port);
     }
-};
 
-inline bool operator==( const IpEndpointName& lhs, const IpEndpointName& rhs )
-{
-  return (lhs.address == rhs.address && lhs.port == rhs.port );
-}
-
-inline bool operator!=( const IpEndpointName& lhs, const IpEndpointName& rhs )
-{
-  return !(lhs == rhs);
-}
-}
+    inline bool operator!=(const IpEndpointName& lhs, const IpEndpointName& rhs) {
+        return !(lhs == rhs);
+    }
+} // namespace osctap
 
 // Backwards-compatibility alias: this library was formerly named oscpack.
 // Existing code that uses the oscpack:: namespace continues to compile.

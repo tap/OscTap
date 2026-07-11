@@ -37,17 +37,15 @@
 #ifndef INCLUDED_OSCTAP_PACKETLISTENER_H
 #define INCLUDED_OSCTAP_PACKETLISTENER_H
 
-namespace osctap
-{
-class IpEndpointName;
+namespace osctap {
+    class IpEndpointName;
 
-class PacketListener{
-  public:
-    virtual ~PacketListener() {}
-    virtual void ProcessPacket( const char *data, int size,
-                                const IpEndpointName& remoteEndpoint ) = 0;
-};
-}
+    class PacketListener {
+      public:
+        virtual ~PacketListener() {}
+        virtual void ProcessPacket(const char* data, int size, const IpEndpointName& remoteEndpoint) = 0;
+    };
+} // namespace osctap
 
 // Backwards-compatibility alias: this library was formerly named oscpack.
 // Existing code that uses the oscpack:: namespace continues to compile.

@@ -39,1156 +39,1022 @@
 
 #include <cassert>
 #include <cstddef>
-#include <cstring> // size_t
-#include "OscTypes.h"
-#include "OscException.h"
-#include "OscConfig.h"   // OSCTAP_THROW, OSCTAP_FREESTANDING
-#include "OscUtilities.h"
 #include <cstddef> // ptrdiff_t
+#include <cstring> // size_t
+
+#include "OscConfig.h" // OSCTAP_THROW, OSCTAP_FREESTANDING
+#include "OscException.h"
+#include "OscTypes.h"
+#include "OscUtilities.h"
 #ifndef OSCTAP_FREESTANDING
 #include <vector> // std::vector backs OwnedMessage (hosted-only)
 #endif
 
+namespace osctap {
 
-namespace osctap{
+    class MalformedPacketException : public Exception {
+      public:
+        MalformedPacketException(const char* w = "malformed packet")
+            : Exception(w) {}
+    };
 
-class MalformedPacketException : public Exception{
-  public:
-    MalformedPacketException( const char *w="malformed packet" )
-      : Exception( w ) {}
-};
+    class MalformedMessageException : public Exception {
+      public:
+        MalformedMessageException(const char* w = "malformed message")
+            : Exception(w) {}
+    };
 
-class MalformedMessageException : public Exception{
-  public:
-    MalformedMessageException( const char *w="malformed message" )
-      : Exception( w ) {}
-};
+    class MalformedBundleException : public Exception {
+      public:
+        MalformedBundleException(const char* w = "malformed bundle")
+            : Exception(w) {}
+    };
 
-class MalformedBundleException : public Exception{
-  public:
-    MalformedBundleException( const char *w="malformed bundle" )
-      : Exception( w ) {}
-};
+    class WrongArgumentTypeException : public Exception {
+      public:
+        WrongArgumentTypeException(const char* w = "wrong argument type")
+            : Exception(w) {}
+    };
 
-class WrongArgumentTypeException : public Exception{
-  public:
-    WrongArgumentTypeException( const char *w="wrong argument type" )
-      : Exception( w ) {}
-};
+    class MissingArgumentException : public Exception {
+      public:
+        MissingArgumentException(const char* w = "missing argument")
+            : Exception(w) {}
+    };
 
-class MissingArgumentException : public Exception{
-  public:
-    MissingArgumentException( const char *w="missing argument" )
-      : Exception( w ) {}
-};
+    class ExcessArgumentException : public Exception {
+      public:
+        ExcessArgumentException(const char* w = "too many arguments")
+            : Exception(w) {}
+    };
 
-class ExcessArgumentException : public Exception{
-  public:
-    ExcessArgumentException( const char *w="too many arguments" )
-      : Exception( w ) {}
-};
+    class ReceivedPacket {
+      public:
+        // Although the OSC spec is not entirely clear on this, we only support
+        // packets up to 0x7FFFFFFC bytes long (the maximum 4-byte aligned value
+        // representable by an int32_t). An exception will be raised if you pass a
+        // larger value to the ReceivedPacket() constructor.
 
+        ReceivedPacket(const char* contents, osc_bundle_element_size_t size)
+            : contents_(contents)
+            , size_(ValidateSize(size)) {}
 
-class ReceivedPacket{
-  public:
-    // Although the OSC spec is not entirely clear on this, we only support
-    // packets up to 0x7FFFFFFC bytes long (the maximum 4-byte aligned value
-    // representable by an int32_t). An exception will be raised if you pass a
-    // larger value to the ReceivedPacket() constructor.
+        ReceivedPacket(const char* contents, std::size_t size)
+            : contents_(contents)
+            , size_(ValidateSize((osc_bundle_element_size_t)size)) {}
 
-    ReceivedPacket( const char *contents, osc_bundle_element_size_t size )
-      : contents_( contents )
-      , size_( ValidateSize(size) ) {}
+        ReceivedPacket(const char* contents, int64_t size)
+            : contents_(contents)
+            , size_(ValidateSize((osc_bundle_element_size_t)size)) {}
 
-    ReceivedPacket( const char *contents, std::size_t size )
-      : contents_( contents )
-      , size_( ValidateSize( (osc_bundle_element_size_t)size ) ) {}
+        bool IsMessage() const { return !IsBundle(); }
+        bool IsBundle() const { return (Size() > 0 && Contents()[0] == '#'); }
 
-    ReceivedPacket(const char *contents, int64_t size)
-        : contents_(contents)
-        , size_(ValidateSize((osc_bundle_element_size_t)size)) {}
+        osc_bundle_element_size_t Size() const { return size_; }
+        const char*               Contents() const { return contents_; }
 
-    bool IsMessage() const { return !IsBundle(); }
-    bool IsBundle() const
-    {
-      return (Size() > 0 && Contents()[0] == '#');
-    }
+        // Non-throwing size validation: returns nullptr if `size` is an acceptable
+        // packet/element size, else a static error string. The single source of the
+        // size rules, shared by the throwing ValidateSize() and the non-throwing
+        // TryValidatePacket().
+        static const char* ValidateSizeNoThrow(osc_bundle_element_size_t size) {
+            // sanity check integer types declared in OscTypes.h
+            // you'll need to fix OscTypes.h if any of these asserts fail
+            if (!IsValidElementSizeValue(size))
+                return "invalid packet size";
 
-    osc_bundle_element_size_t Size() const { return size_; }
-    const char *Contents() const { return contents_; }
+            if (size == 0)
+                return "zero length elements not permitted";
 
-    // Non-throwing size validation: returns nullptr if `size` is an acceptable
-    // packet/element size, else a static error string. The single source of the
-    // size rules, shared by the throwing ValidateSize() and the non-throwing
-    // TryValidatePacket().
-    static const char* ValidateSizeNoThrow( osc_bundle_element_size_t size )
-    {
-      // sanity check integer types declared in OscTypes.h
-      // you'll need to fix OscTypes.h if any of these asserts fail
-      if( !IsValidElementSizeValue(size) )
-        return "invalid packet size";
+            if (!IsMultipleOf4(size))
+                return "element size must be multiple of four";
 
-      if( size == 0 )
-        return "zero length elements not permitted";
-
-      if( !IsMultipleOf4(size) )
-        return "element size must be multiple of four";
-
-      return nullptr;
-    }
-
-  private:
-    const char *contents_;
-    osc_bundle_element_size_t size_;
-
-    static osc_bundle_element_size_t ValidateSize( osc_bundle_element_size_t size )
-    {
-      if( const char* err = ValidateSizeNoThrow( size ) )
-        OSCTAP_THROW( MalformedPacketException( err ) );
-
-      return size;
-    }
-};
-
-
-class ReceivedBundleElement{
-  public:
-    ReceivedBundleElement( const char *sizePtr )
-      : sizePtr_( sizePtr ) {}
-
-    friend class ReceivedBundleElementIterator;
-
-    bool IsMessage() const { return !IsBundle(); }
-    bool IsBundle() const
-    {
-      return (Size() > 0 && Contents()[0] == '#');
-    }
-
-    osc_bundle_element_size_t Size() const
-    {
-      return ToInt32( sizePtr_ );
-    }
-    const char *Contents() const { return sizePtr_ + osctap::OSC_SIZEOF_INT32; }
-
-  private:
-    const char *sizePtr_;
-};
-
-
-class ReceivedBundleElementIterator{
-  public:
-    ReceivedBundleElementIterator( const char *sizePtr )
-      : value_( sizePtr ) {}
-
-    ReceivedBundleElementIterator operator++()
-    {
-      Advance();
-      return *this;
-    }
-
-    ReceivedBundleElementIterator operator++(int)
-    {
-      ReceivedBundleElementIterator old( *this );
-      Advance();
-      return old;
-    }
-
-    const ReceivedBundleElement& operator*() const { return value_; }
-
-    const ReceivedBundleElement* operator->() const { return &value_; }
-
-    friend bool operator==(const ReceivedBundleElementIterator& lhs,
-                           const ReceivedBundleElementIterator& rhs );
-
-  private:
-    ReceivedBundleElement value_;
-
-    void Advance() { value_.sizePtr_ = value_.Contents() + value_.Size(); }
-
-    bool IsEqualTo( const ReceivedBundleElementIterator& rhs ) const
-    {
-      return value_.sizePtr_ == rhs.value_.sizePtr_;
-    }
-};
-
-inline bool operator==(const ReceivedBundleElementIterator& lhs,
-                       const ReceivedBundleElementIterator& rhs )
-{
-  return lhs.IsEqualTo( rhs );
-}
-
-inline bool operator!=(const ReceivedBundleElementIterator& lhs,
-                       const ReceivedBundleElementIterator& rhs )
-{
-  return !( lhs == rhs );
-}
-
-
-class ReceivedMessageArgument{
-  public:
-    ReceivedMessageArgument( ) = default;
-    ReceivedMessageArgument( const char *typeTagPtr, const char *argumentPtr )
-      : typeTagPtr_( typeTagPtr )
-      , argumentPtr_( argumentPtr ) {}
-
-    friend class ReceivedMessageArgumentIterator;
-
-    char TypeTag() const OSCTAP_REALTIME { return *typeTagPtr_; }
-
-    // the unchecked methods below don't check whether the argument actually
-    // is of the specified type. they should only be used if you've already
-    // checked the type tag or the associated IsType() method.
-
-    bool IsBool() const
-    { return *typeTagPtr_ == TRUE_TYPE_TAG || *typeTagPtr_ == FALSE_TYPE_TAG; }
-    bool AsBool() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == TRUE_TYPE_TAG )
-        return true;
-      else if( *typeTagPtr_ == FALSE_TYPE_TAG )
-        return false;
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    bool AsBoolUnchecked() const OSCTAP_REALTIME
-    {
-      // Unchecked: assumes a valid bool argument (tag already checked / message
-      // validated at construction), so it just reads the tag -- throw-free and
-      // realtime-safe, like the other *Unchecked accessors.
-      return *typeTagPtr_ == TRUE_TYPE_TAG;
-    }
-
-    bool IsNil() const { return *typeTagPtr_ == NIL_TYPE_TAG; }
-    bool IsInfinitum() const { return *typeTagPtr_ == INFINITUM_TYPE_TAG; }
-
-    bool IsInt32() const { return *typeTagPtr_ == INT32_TYPE_TAG; }
-    int32_t AsInt32() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == INT32_TYPE_TAG )
-        return AsInt32Unchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    int32_t AsInt32Unchecked() const OSCTAP_REALTIME
-    {
-      return ToInt32( argumentPtr_ );
-    }
-
-    bool IsFloat() const { return *typeTagPtr_ == FLOAT_TYPE_TAG; }
-    float AsFloat() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == FLOAT_TYPE_TAG )
-        return AsFloatUnchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    float AsFloatUnchecked() const OSCTAP_REALTIME
-    {
-      return BitCast<float>( ToUInt32( argumentPtr_ ) );
-    }
-
-    bool IsChar() const { return *typeTagPtr_ == CHAR_TYPE_TAG; }
-    char AsChar() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == CHAR_TYPE_TAG )
-        return AsCharUnchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    char AsCharUnchecked() const OSCTAP_REALTIME
-    {
-      return (char)ToInt32( argumentPtr_ );
-    }
-
-    bool IsRgbaColor() const { return *typeTagPtr_ == RGBA_COLOR_TYPE_TAG; }
-    uint32_t AsRgbaColor() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == RGBA_COLOR_TYPE_TAG )
-        return AsRgbaColorUnchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    uint32_t AsRgbaColorUnchecked() const OSCTAP_REALTIME
-    {
-      return ToUInt32( argumentPtr_ );
-    }
-
-    bool IsMidiMessage() const { return *typeTagPtr_ == MIDI_MESSAGE_TYPE_TAG; }
-    uint32_t AsMidiMessage() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == MIDI_MESSAGE_TYPE_TAG )
-        return AsMidiMessageUnchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    uint32_t AsMidiMessageUnchecked() const OSCTAP_REALTIME
-    {
-      return ToUInt32( argumentPtr_ );
-    }
-
-    bool IsInt64() const { return *typeTagPtr_ == INT64_TYPE_TAG; }
-    int64_t AsInt64() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == INT64_TYPE_TAG )
-        return AsInt64Unchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    int64_t AsInt64Unchecked() const OSCTAP_REALTIME
-    {
-      return ToInt64( argumentPtr_ );
-    }
-
-    bool IsTimeTag() const { return *typeTagPtr_ == TIME_TAG_TYPE_TAG; }
-    uint64_t AsTimeTag() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == TIME_TAG_TYPE_TAG )
-        return AsTimeTagUnchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    uint64_t AsTimeTagUnchecked() const OSCTAP_REALTIME
-    {
-      return ToUInt64( argumentPtr_ );
-    }
-
-    bool IsDouble() const { return *typeTagPtr_ == DOUBLE_TYPE_TAG; }
-    double AsDouble() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == DOUBLE_TYPE_TAG )
-        return AsDoubleUnchecked();
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    double AsDoubleUnchecked() const OSCTAP_REALTIME
-    {
-      return BitCast<double>( ToUInt64( argumentPtr_ ) );
-    }
-
-    bool IsString() const { return *typeTagPtr_ == STRING_TYPE_TAG; }
-    const char* AsString() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == STRING_TYPE_TAG )
-        return argumentPtr_;
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    const char* AsStringUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
-
-    bool IsSymbol() const { return *typeTagPtr_ == SYMBOL_TYPE_TAG; }
-    const char* AsSymbol() const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == SYMBOL_TYPE_TAG )
-        return argumentPtr_;
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    const char* AsSymbolUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
-
-    bool IsBlob() const { return *typeTagPtr_ == BLOB_TYPE_TAG; }
-    void AsBlob( const void*& data, osc_bundle_element_size_t& size ) const
-    {
-      if( !typeTagPtr_ )
-        OSCTAP_THROW( MissingArgumentException() );
-      else if( *typeTagPtr_ == BLOB_TYPE_TAG )
-        AsBlobUnchecked( data, size );
-      else
-        OSCTAP_THROW( WrongArgumentTypeException() );
-    }
-    void AsBlobUnchecked( const void*& data, osc_bundle_element_size_t& size ) const OSCTAP_REALTIME
-    {
-      // Like the other *Unchecked accessors, this trusts that the message was
-      // validated at construction: ReceivedMessage::TryInit() bounds-checks every
-      // blob (valid size AND within the message), so reading the size here without
-      // re-validating is safe. That makes this throw-free and realtime-safe -- the
-      // non-throwing blob accessor for the RT read path.
-      size = (osc_bundle_element_size_t)ToUInt32( argumentPtr_ );
-      data = (const void*)( argumentPtr_ + osctap::OSC_SIZEOF_INT32 );
-    }
-
-    bool IsArrayBegin() const { return *typeTagPtr_ == ARRAY_BEGIN_TYPE_TAG; }
-    bool IsArrayEnd() const { return *typeTagPtr_ == ARRAY_END_TYPE_TAG; }
-    // Calculate the number of top-level items in the array. Nested arrays count as one item.
-    // Only valid at array start. Will throw an exception if IsArrayStart() == false.
-    std::size_t ComputeArrayItemCount() const
-    {
-      // it is only valid to call ComputeArrayItemCount when the argument is the array start marker
-      if( !IsArrayBegin() )
-        OSCTAP_THROW( WrongArgumentTypeException() );
-
-      std::size_t result = 0;
-      unsigned int level = 0;
-      const char *typeTag = typeTagPtr_ + 1;
-
-      // iterate through all type tags. note that ReceivedMessage::Init
-      // has already checked that the message is well formed.
-      while( *typeTag ) {
-        switch( *typeTag++ ) {
-          case ARRAY_BEGIN_TYPE_TAG:
-            level += 1;
-            break;
-
-          case ARRAY_END_TYPE_TAG:
-            if(level == 0)
-              return result;
-            level -= 1;
-            break;
-
-          default:
-            if( level == 0 ) // only count items at level 0
-              ++result;
+            return nullptr;
         }
-      }
 
-      return result;
-    }
+      private:
+        const char*               contents_;
+        osc_bundle_element_size_t size_;
 
-  private:
-    const char *typeTagPtr_;
-    const char *argumentPtr_;
-};
+        static osc_bundle_element_size_t ValidateSize(osc_bundle_element_size_t size) {
+            if (const char* err = ValidateSizeNoThrow(size))
+                OSCTAP_THROW(MalformedPacketException(err));
 
-
-class ReceivedMessageArgumentIterator{
-  public:
-    ReceivedMessageArgumentIterator( const char *typeTags, const char *arguments )
-      : value_( typeTags, arguments ) {}
-
-    ReceivedMessageArgumentIterator operator++() OSCTAP_REALTIME
-    {
-      Advance();
-      return *this;
-    }
-
-    ReceivedMessageArgumentIterator operator++(int) OSCTAP_REALTIME
-    {
-      ReceivedMessageArgumentIterator old( *this );
-      Advance();
-      return old;
-    }
-
-    const ReceivedMessageArgument& operator*() const OSCTAP_REALTIME { return value_; }
-
-    const ReceivedMessageArgument* operator->() const OSCTAP_REALTIME { return &value_; }
-
-    friend bool operator==(const ReceivedMessageArgumentIterator& lhs,
-                           const ReceivedMessageArgumentIterator& rhs );
-
-  private:
-    ReceivedMessageArgument value_;
-
-    void Advance() OSCTAP_REALTIME
-    {
-      if( !value_.typeTagPtr_ )
-        return;
-
-      switch( *value_.typeTagPtr_++ ){
-        case '\0':
-          // don't advance past end
-          --value_.typeTagPtr_;
-          break;
-
-        case TRUE_TYPE_TAG:
-        case FALSE_TYPE_TAG:
-        case NIL_TYPE_TAG:
-        case INFINITUM_TYPE_TAG:
-
-          // zero length
-          break;
-
-        case INT32_TYPE_TAG:
-        case FLOAT_TYPE_TAG:
-        case CHAR_TYPE_TAG:
-        case RGBA_COLOR_TYPE_TAG:
-        case MIDI_MESSAGE_TYPE_TAG:
-
-          value_.argumentPtr_ += 4;
-          break;
-
-        case INT64_TYPE_TAG:
-        case TIME_TAG_TYPE_TAG:
-        case DOUBLE_TYPE_TAG:
-
-          value_.argumentPtr_ += 8;
-          break;
-
-        case STRING_TYPE_TAG:
-        case SYMBOL_TYPE_TAG:
-
-          // we use the unsafe function FindStr4End(char*) here because all of
-          // the arguments have already been validated in
-          // ReceivedMessage::Init() below.
-
-          value_.argumentPtr_ = FindStr4End( value_.argumentPtr_ );
-          break;
-
-        case BLOB_TYPE_TAG:
-        {
-          // treat blob size as an unsigned int for the purposes of this calculation
-          uint32_t blobSize = ToUInt32( value_.argumentPtr_ );
-          value_.argumentPtr_ = value_.argumentPtr_ + osctap::OSC_SIZEOF_INT32 + RoundUp4( blobSize );
+            return size;
         }
-          break;
+    };
 
-        case ARRAY_BEGIN_TYPE_TAG:
-        case ARRAY_END_TYPE_TAG:
+    class ReceivedBundleElement {
+      public:
+        ReceivedBundleElement(const char* sizePtr)
+            : sizePtr_(sizePtr) {}
 
-          //    [ Indicates the beginning of an array. The tags following are for
-          //        data in the Array until a close brace tag is reached.
-          //    ] Indicates the end of an array.
+        friend class ReceivedBundleElementIterator;
 
-          // zero length, don't advance argument ptr
-          break;
+        bool IsMessage() const { return !IsBundle(); }
+        bool IsBundle() const { return (Size() > 0 && Contents()[0] == '#'); }
 
-        default:    // unknown type tag
-          // don't advance
-          --value_.typeTagPtr_;
-          break;
-      }
+        osc_bundle_element_size_t Size() const { return ToInt32(sizePtr_); }
+        const char*               Contents() const { return sizePtr_ + osctap::OSC_SIZEOF_INT32; }
+
+      private:
+        const char* sizePtr_;
+    };
+
+    class ReceivedBundleElementIterator {
+      public:
+        ReceivedBundleElementIterator(const char* sizePtr)
+            : value_(sizePtr) {}
+
+        ReceivedBundleElementIterator operator++() {
+            Advance();
+            return *this;
+        }
+
+        ReceivedBundleElementIterator operator++(int) {
+            ReceivedBundleElementIterator old(*this);
+            Advance();
+            return old;
+        }
+
+        const ReceivedBundleElement& operator*() const { return value_; }
+
+        const ReceivedBundleElement* operator->() const { return &value_; }
+
+        friend bool operator==(const ReceivedBundleElementIterator& lhs, const ReceivedBundleElementIterator& rhs);
+
+      private:
+        ReceivedBundleElement value_;
+
+        void Advance() { value_.sizePtr_ = value_.Contents() + value_.Size(); }
+
+        bool IsEqualTo(const ReceivedBundleElementIterator& rhs) const {
+            return value_.sizePtr_ == rhs.value_.sizePtr_;
+        }
+    };
+
+    inline bool operator==(const ReceivedBundleElementIterator& lhs, const ReceivedBundleElementIterator& rhs) {
+        return lhs.IsEqualTo(rhs);
     }
 
-    bool IsEqualTo( const ReceivedMessageArgumentIterator& rhs ) const OSCTAP_REALTIME
-    {
-      return value_.typeTagPtr_ == rhs.value_.typeTagPtr_;
-    }
-};
-
-inline bool operator==(const ReceivedMessageArgumentIterator& lhs,
-                       const ReceivedMessageArgumentIterator& rhs )
-{
-  return lhs.IsEqualTo( rhs );
-}
-
-inline bool operator!=(const ReceivedMessageArgumentIterator& lhs,
-                       const ReceivedMessageArgumentIterator& rhs )
-{
-  return !( lhs == rhs );
-}
-
-
-class ReceivedMessageArgumentStream{
-    friend class ReceivedMessage;
-    ReceivedMessageArgumentStream( const ReceivedMessageArgumentIterator& begin,
-                                   const ReceivedMessageArgumentIterator& end )
-      : p_( begin )
-      , end_( end ) {}
-
-    ReceivedMessageArgumentIterator p_, end_;
-
-  public:
-
-    // end of stream
-    bool Eos() const { return p_ == end_; }
-
-    ReceivedMessageArgumentStream& operator>>( bool& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
-
-      rhs = (*p_++).AsBool();
-      return *this;
+    inline bool operator!=(const ReceivedBundleElementIterator& lhs, const ReceivedBundleElementIterator& rhs) {
+        return !(lhs == rhs);
     }
 
-    // not sure if it would be useful to stream Nil and Infinitum
-    // for now it's not possible
-    // same goes for array boundaries
+    class ReceivedMessageArgument {
+      public:
+        ReceivedMessageArgument() = default;
+        ReceivedMessageArgument(const char* typeTagPtr, const char* argumentPtr)
+            : typeTagPtr_(typeTagPtr)
+            , argumentPtr_(argumentPtr) {}
 
-    ReceivedMessageArgumentStream& operator>>( int32_t& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        friend class ReceivedMessageArgumentIterator;
 
-      rhs = (*p_++).AsInt32();
-      return *this;
-    }
+        char TypeTag() const OSCTAP_REALTIME { return *typeTagPtr_; }
 
-    ReceivedMessageArgumentStream& operator>>( float& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        // the unchecked methods below don't check whether the argument actually
+        // is of the specified type. they should only be used if you've already
+        // checked the type tag or the associated IsType() method.
 
-      rhs = (*p_++).AsFloat();
-      return *this;
-    }
+        bool IsBool() const { return *typeTagPtr_ == TRUE_TYPE_TAG || *typeTagPtr_ == FALSE_TYPE_TAG; }
+        bool AsBool() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == TRUE_TYPE_TAG)
+                return true;
+            else if (*typeTagPtr_ == FALSE_TYPE_TAG)
+                return false;
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        bool AsBoolUnchecked() const OSCTAP_REALTIME {
+            // Unchecked: assumes a valid bool argument (tag already checked / message
+            // validated at construction), so it just reads the tag -- throw-free and
+            // realtime-safe, like the other *Unchecked accessors.
+            return *typeTagPtr_ == TRUE_TYPE_TAG;
+        }
 
-    ReceivedMessageArgumentStream& operator>>( char& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        bool IsNil() const { return *typeTagPtr_ == NIL_TYPE_TAG; }
+        bool IsInfinitum() const { return *typeTagPtr_ == INFINITUM_TYPE_TAG; }
 
-      rhs = (*p_++).AsChar();
-      return *this;
-    }
+        bool    IsInt32() const { return *typeTagPtr_ == INT32_TYPE_TAG; }
+        int32_t AsInt32() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == INT32_TYPE_TAG)
+                return AsInt32Unchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        int32_t AsInt32Unchecked() const OSCTAP_REALTIME { return ToInt32(argumentPtr_); }
 
-    ReceivedMessageArgumentStream& operator>>( RgbaColor& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        bool  IsFloat() const { return *typeTagPtr_ == FLOAT_TYPE_TAG; }
+        float AsFloat() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == FLOAT_TYPE_TAG)
+                return AsFloatUnchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        float AsFloatUnchecked() const OSCTAP_REALTIME { return BitCast<float>(ToUInt32(argumentPtr_)); }
 
-      rhs.value = (*p_++).AsRgbaColor();
-      return *this;
-    }
+        bool IsChar() const { return *typeTagPtr_ == CHAR_TYPE_TAG; }
+        char AsChar() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == CHAR_TYPE_TAG)
+                return AsCharUnchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        char AsCharUnchecked() const OSCTAP_REALTIME { return (char)ToInt32(argumentPtr_); }
 
-    ReceivedMessageArgumentStream& operator>>( MidiMessage& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        bool     IsRgbaColor() const { return *typeTagPtr_ == RGBA_COLOR_TYPE_TAG; }
+        uint32_t AsRgbaColor() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == RGBA_COLOR_TYPE_TAG)
+                return AsRgbaColorUnchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        uint32_t AsRgbaColorUnchecked() const OSCTAP_REALTIME { return ToUInt32(argumentPtr_); }
 
-      rhs.value = (*p_++).AsMidiMessage();
-      return *this;
-    }
+        bool     IsMidiMessage() const { return *typeTagPtr_ == MIDI_MESSAGE_TYPE_TAG; }
+        uint32_t AsMidiMessage() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == MIDI_MESSAGE_TYPE_TAG)
+                return AsMidiMessageUnchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        uint32_t AsMidiMessageUnchecked() const OSCTAP_REALTIME { return ToUInt32(argumentPtr_); }
 
-    ReceivedMessageArgumentStream& operator>>( int64_t& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        bool    IsInt64() const { return *typeTagPtr_ == INT64_TYPE_TAG; }
+        int64_t AsInt64() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == INT64_TYPE_TAG)
+                return AsInt64Unchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        int64_t AsInt64Unchecked() const OSCTAP_REALTIME { return ToInt64(argumentPtr_); }
 
-      rhs = (*p_++).AsInt64();
-      return *this;
-    }
+        bool     IsTimeTag() const { return *typeTagPtr_ == TIME_TAG_TYPE_TAG; }
+        uint64_t AsTimeTag() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == TIME_TAG_TYPE_TAG)
+                return AsTimeTagUnchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        uint64_t AsTimeTagUnchecked() const OSCTAP_REALTIME { return ToUInt64(argumentPtr_); }
 
-    ReceivedMessageArgumentStream& operator>>( TimeTag& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        bool   IsDouble() const { return *typeTagPtr_ == DOUBLE_TYPE_TAG; }
+        double AsDouble() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == DOUBLE_TYPE_TAG)
+                return AsDoubleUnchecked();
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        double AsDoubleUnchecked() const OSCTAP_REALTIME { return BitCast<double>(ToUInt64(argumentPtr_)); }
 
-      rhs.value = (*p_++).AsTimeTag();
-      return *this;
-    }
+        bool        IsString() const { return *typeTagPtr_ == STRING_TYPE_TAG; }
+        const char* AsString() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == STRING_TYPE_TAG)
+                return argumentPtr_;
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        const char* AsStringUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
 
-    ReceivedMessageArgumentStream& operator>>( double& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        bool        IsSymbol() const { return *typeTagPtr_ == SYMBOL_TYPE_TAG; }
+        const char* AsSymbol() const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == SYMBOL_TYPE_TAG)
+                return argumentPtr_;
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        const char* AsSymbolUnchecked() const OSCTAP_REALTIME { return argumentPtr_; }
 
-      rhs = (*p_++).AsDouble();
-      return *this;
-    }
+        bool IsBlob() const { return *typeTagPtr_ == BLOB_TYPE_TAG; }
+        void AsBlob(const void*& data, osc_bundle_element_size_t& size) const {
+            if (!typeTagPtr_)
+                OSCTAP_THROW(MissingArgumentException());
+            else if (*typeTagPtr_ == BLOB_TYPE_TAG)
+                AsBlobUnchecked(data, size);
+            else
+                OSCTAP_THROW(WrongArgumentTypeException());
+        }
+        void AsBlobUnchecked(const void*& data, osc_bundle_element_size_t& size) const OSCTAP_REALTIME {
+            // Like the other *Unchecked accessors, this trusts that the message was
+            // validated at construction: ReceivedMessage::TryInit() bounds-checks every
+            // blob (valid size AND within the message), so reading the size here without
+            // re-validating is safe. That makes this throw-free and realtime-safe -- the
+            // non-throwing blob accessor for the RT read path.
+            size = (osc_bundle_element_size_t)ToUInt32(argumentPtr_);
+            data = (const void*)(argumentPtr_ + osctap::OSC_SIZEOF_INT32);
+        }
 
-    ReceivedMessageArgumentStream& operator>>( Blob& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+        bool IsArrayBegin() const { return *typeTagPtr_ == ARRAY_BEGIN_TYPE_TAG; }
+        bool IsArrayEnd() const { return *typeTagPtr_ == ARRAY_END_TYPE_TAG; }
+        // Calculate the number of top-level items in the array. Nested arrays count as one item.
+        // Only valid at array start. Will throw an exception if IsArrayStart() == false.
+        std::size_t ComputeArrayItemCount() const {
+            // it is only valid to call ComputeArrayItemCount when the argument is the array start marker
+            if (!IsArrayBegin())
+                OSCTAP_THROW(WrongArgumentTypeException());
 
-      (*p_++).AsBlob( rhs.data, rhs.size );
-      return *this;
-    }
+            std::size_t  result  = 0;
+            unsigned int level   = 0;
+            const char*  typeTag = typeTagPtr_ + 1;
 
-    ReceivedMessageArgumentStream& operator>>( const char*& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+            // iterate through all type tags. note that ReceivedMessage::Init
+            // has already checked that the message is well formed.
+            while (*typeTag) {
+                switch (*typeTag++) {
+                case ARRAY_BEGIN_TYPE_TAG:
+                    level += 1;
+                    break;
 
-      rhs = (*p_++).AsString();
-      return *this;
-    }
+                case ARRAY_END_TYPE_TAG:
+                    if (level == 0)
+                        return result;
+                    level -= 1;
+                    break;
 
-    ReceivedMessageArgumentStream& operator>>( Symbol& rhs )
-    {
-      if( Eos() )
-        OSCTAP_THROW( MissingArgumentException() );
+                default:
+                    if (level == 0) // only count items at level 0
+                        ++result;
+                }
+            }
 
-      rhs.value = (*p_++).AsSymbol();
-      return *this;
-    }
+            return result;
+        }
 
-    ReceivedMessageArgumentStream& operator>>( MessageTerminator& rhs )
-    {
-      (void) rhs; // suppress unused parameter warning
+      private:
+        const char* typeTagPtr_;
+        const char* argumentPtr_;
+    };
 
-      if( !Eos() )
-        OSCTAP_THROW( ExcessArgumentException() );
+    class ReceivedMessageArgumentIterator {
+      public:
+        ReceivedMessageArgumentIterator(const char* typeTags, const char* arguments)
+            : value_(typeTags, arguments) {}
 
-      return *this;
-    }
-};
+        ReceivedMessageArgumentIterator operator++() OSCTAP_REALTIME {
+            Advance();
+            return *this;
+        }
 
+        ReceivedMessageArgumentIterator operator++(int) OSCTAP_REALTIME {
+            ReceivedMessageArgumentIterator old(*this);
+            Advance();
+            return old;
+        }
 
-class ReceivedMessage{
-  public:
-    // Non-throwing parse + structural validation. Sets all boundary members and
-    // returns nullptr on success, or a static error string on malformed input.
-    // Use on no-exceptions / untrusted-input paths:
-    //     ReceivedMessage m;
-    //     if( m.TryInit(data, size) == nullptr ) { /* read m */ }
-    // This is the single source of truth: the throwing Init() below delegates
-    // here, as does the non-throwing Validate() / TryValidatePacket() gate for
-    // untrusted input on no-exceptions builds.
-    const char* TryInit( const char *message, osc_bundle_element_size_t size )
-    {
-      addressPattern_ = message;
-      size_ = size;
+        const ReceivedMessageArgument& operator*() const OSCTAP_REALTIME { return value_; }
 
-      if( !IsValidElementSizeValue(size) )
-        return "invalid message size";
+        const ReceivedMessageArgument* operator->() const OSCTAP_REALTIME { return &value_; }
 
-      if( size == 0 )
-        return "zero length messages not permitted";
+        friend bool operator==(const ReceivedMessageArgumentIterator& lhs, const ReceivedMessageArgumentIterator& rhs);
 
-      if( !IsMultipleOf4(size) )
-        return "message size must be multiple of four";
+      private:
+        ReceivedMessageArgument value_;
 
-      const char *end = message + size;
+        void Advance() OSCTAP_REALTIME {
+            if (!value_.typeTagPtr_)
+                return;
 
-      typeTagsBegin_ = FindStr4End( addressPattern_, end );
-      if( typeTagsBegin_ == 0 ){
-        // address pattern was not terminated before end
-        return "unterminated address pattern";
-      }
+            switch (*value_.typeTagPtr_++) {
+            case '\0':
+                // don't advance past end
+                --value_.typeTagPtr_;
+                break;
 
-      if( typeTagsBegin_ == end ){
-        // message consists of only the address pattern - no arguments or type tags.
-        typeTagsBegin_ = 0;
-        typeTagsEnd_ = 0;
-        arguments_ = 0;
+            case TRUE_TYPE_TAG:
+            case FALSE_TYPE_TAG:
+            case NIL_TYPE_TAG:
+            case INFINITUM_TYPE_TAG:
 
-      }else{
-        if( *typeTagsBegin_ != ',' )
-          return "type tags not present";
-
-        if( *(typeTagsBegin_ + 1) == '\0' ){
-          // zero length type tags
-          typeTagsBegin_ = 0;
-          typeTagsEnd_ = 0;
-          arguments_ = 0;
-
-        }else{
-          // check that all arguments are present and well formed
-
-          arguments_ = FindStr4End( typeTagsBegin_, end );
-          if( arguments_ == 0 ){
-            return "type tags were not terminated before end of message";
-          }
-
-          ++typeTagsBegin_; // advance past initial ','
-
-          const char *typeTag = typeTagsBegin_;
-          const char *argument = arguments_;
-          unsigned int arrayLevel = 0;
-
-          do{
-            switch( *typeTag ){
-              case TRUE_TYPE_TAG:
-              case FALSE_TYPE_TAG:
-              case NIL_TYPE_TAG:
-              case INFINITUM_TYPE_TAG:
                 // zero length
                 break;
+
+            case INT32_TYPE_TAG:
+            case FLOAT_TYPE_TAG:
+            case CHAR_TYPE_TAG:
+            case RGBA_COLOR_TYPE_TAG:
+            case MIDI_MESSAGE_TYPE_TAG:
+
+                value_.argumentPtr_ += 4;
+                break;
+
+            case INT64_TYPE_TAG:
+            case TIME_TAG_TYPE_TAG:
+            case DOUBLE_TYPE_TAG:
+
+                value_.argumentPtr_ += 8;
+                break;
+
+            case STRING_TYPE_TAG:
+            case SYMBOL_TYPE_TAG:
+
+                // we use the unsafe function FindStr4End(char*) here because all of
+                // the arguments have already been validated in
+                // ReceivedMessage::Init() below.
+
+                value_.argumentPtr_ = FindStr4End(value_.argumentPtr_);
+                break;
+
+            case BLOB_TYPE_TAG: {
+                // treat blob size as an unsigned int for the purposes of this calculation
+                uint32_t blobSize   = ToUInt32(value_.argumentPtr_);
+                value_.argumentPtr_ = value_.argumentPtr_ + osctap::OSC_SIZEOF_INT32 + RoundUp4(blobSize);
+            } break;
+
+            case ARRAY_BEGIN_TYPE_TAG:
+            case ARRAY_END_TYPE_TAG:
 
                 //    [ Indicates the beginning of an array. The tags following are for
                 //        data in the Array until a close brace tag is reached.
                 //    ] Indicates the end of an array.
-              case ARRAY_BEGIN_TYPE_TAG:
-                ++arrayLevel;
-                // (zero length argument data)
+
+                // zero length, don't advance argument ptr
                 break;
 
-              case ARRAY_END_TYPE_TAG:
-                if( arrayLevel == 0 )
-                  return "array close tag ']' without matching open tag '['";
-                --arrayLevel;
-                // (zero length argument data)
+            default: // unknown type tag
+                // don't advance
+                --value_.typeTagPtr_;
                 break;
-
-              case INT32_TYPE_TAG:
-              case FLOAT_TYPE_TAG:
-              case CHAR_TYPE_TAG:
-              case RGBA_COLOR_TYPE_TAG:
-              case MIDI_MESSAGE_TYPE_TAG:
-
-                if( argument == end )
-                  return "arguments exceed message size";
-                argument += 4;
-                if( argument > end )
-                  return "arguments exceed message size";
-                break;
-
-              case INT64_TYPE_TAG:
-              case TIME_TAG_TYPE_TAG:
-              case DOUBLE_TYPE_TAG:
-
-                if( argument == end )
-                  return "arguments exceed message size";
-                argument += 8;
-                if( argument > end )
-                  return "arguments exceed message size";
-                break;
-
-              case STRING_TYPE_TAG:
-              case SYMBOL_TYPE_TAG:
-
-                if( argument == end )
-                  return "arguments exceed message size";
-                argument = FindStr4End( argument, end );
-                if( argument == 0 )
-                  return "unterminated string argument";
-                break;
-
-              case BLOB_TYPE_TAG:
-              {
-                if( argument + osctap::OSC_SIZEOF_INT32 > end )
-                  return "arguments exceed message size";
-
-                // treat blob size as an unsigned int for the purposes of this calculation
-                uint32_t blobSize = ToUInt32( argument );
-                if( !IsValidElementSizeValue( (osc_bundle_element_size_t)blobSize ) )
-                  return "invalid blob size";
-
-                // Compare sizes rather than advancing the pointer first: a huge
-                // blobSize must not be allowed to overflow the pointer (or RoundUp4)
-                // and thereby slip past the bounds check. blobData <= end is
-                // guaranteed by the check above.
-                const char *blobData = argument + osctap::OSC_SIZEOF_INT32;
-                if( RoundUp4( blobSize ) > (uint32_t)(end - blobData) )
-                  return "arguments exceed message size";
-
-                argument = blobData + RoundUp4( blobSize );
-              }
-                break;
-
-              default:
-                return "unknown type tag";
             }
-
-          }while( *++typeTag != '\0' );
-          typeTagsEnd_ = typeTag;
-
-          if( arrayLevel !=  0 )
-            return "array was not terminated before end of message (expected ']' end of array tag)";
         }
 
-        // These invariants should be guaranteed by the above code.
-        // we depend on them in the implementation of ArgumentCount()
+        bool IsEqualTo(const ReceivedMessageArgumentIterator& rhs) const OSCTAP_REALTIME {
+            return value_.typeTagPtr_ == rhs.value_.typeTagPtr_;
+        }
+    };
+
+    inline bool operator==(const ReceivedMessageArgumentIterator& lhs, const ReceivedMessageArgumentIterator& rhs) {
+        return lhs.IsEqualTo(rhs);
+    }
+
+    inline bool operator!=(const ReceivedMessageArgumentIterator& lhs, const ReceivedMessageArgumentIterator& rhs) {
+        return !(lhs == rhs);
+    }
+
+    class ReceivedMessageArgumentStream {
+        friend class ReceivedMessage;
+        ReceivedMessageArgumentStream(const ReceivedMessageArgumentIterator& begin,
+                                      const ReceivedMessageArgumentIterator& end)
+            : p_(begin)
+            , end_(end) {}
+
+        ReceivedMessageArgumentIterator p_, end_;
+
+      public:
+        // end of stream
+        bool Eos() const { return p_ == end_; }
+
+        ReceivedMessageArgumentStream& operator>>(bool& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs = (*p_++).AsBool();
+            return *this;
+        }
+
+        // not sure if it would be useful to stream Nil and Infinitum
+        // for now it's not possible
+        // same goes for array boundaries
+
+        ReceivedMessageArgumentStream& operator>>(int32_t& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs = (*p_++).AsInt32();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(float& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs = (*p_++).AsFloat();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(char& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs = (*p_++).AsChar();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(RgbaColor& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs.value = (*p_++).AsRgbaColor();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(MidiMessage& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs.value = (*p_++).AsMidiMessage();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(int64_t& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs = (*p_++).AsInt64();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(TimeTag& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs.value = (*p_++).AsTimeTag();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(double& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs = (*p_++).AsDouble();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(Blob& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            (*p_++).AsBlob(rhs.data, rhs.size);
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(const char*& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs = (*p_++).AsString();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(Symbol& rhs) {
+            if (Eos())
+                OSCTAP_THROW(MissingArgumentException());
+
+            rhs.value = (*p_++).AsSymbol();
+            return *this;
+        }
+
+        ReceivedMessageArgumentStream& operator>>(MessageTerminator& rhs) {
+            (void)rhs; // suppress unused parameter warning
+
+            if (!Eos())
+                OSCTAP_THROW(ExcessArgumentException());
+
+            return *this;
+        }
+    };
+
+    class ReceivedMessage {
+      public:
+        // Non-throwing parse + structural validation. Sets all boundary members and
+        // returns nullptr on success, or a static error string on malformed input.
+        // Use on no-exceptions / untrusted-input paths:
+        //     ReceivedMessage m;
+        //     if( m.TryInit(data, size) == nullptr ) { /* read m */ }
+        // This is the single source of truth: the throwing Init() below delegates
+        // here, as does the non-throwing Validate() / TryValidatePacket() gate for
+        // untrusted input on no-exceptions builds.
+        const char* TryInit(const char* message, osc_bundle_element_size_t size) {
+            addressPattern_ = message;
+            size_           = size;
+
+            if (!IsValidElementSizeValue(size))
+                return "invalid message size";
+
+            if (size == 0)
+                return "zero length messages not permitted";
+
+            if (!IsMultipleOf4(size))
+                return "message size must be multiple of four";
+
+            const char* end = message + size;
+
+            typeTagsBegin_ = FindStr4End(addressPattern_, end);
+            if (typeTagsBegin_ == 0) {
+                // address pattern was not terminated before end
+                return "unterminated address pattern";
+            }
+
+            if (typeTagsBegin_ == end) {
+                // message consists of only the address pattern - no arguments or type tags.
+                typeTagsBegin_ = 0;
+                typeTagsEnd_   = 0;
+                arguments_     = 0;
+            }
+            else {
+                if (*typeTagsBegin_ != ',')
+                    return "type tags not present";
+
+                if (*(typeTagsBegin_ + 1) == '\0') {
+                    // zero length type tags
+                    typeTagsBegin_ = 0;
+                    typeTagsEnd_   = 0;
+                    arguments_     = 0;
+                }
+                else {
+                    // check that all arguments are present and well formed
+
+                    arguments_ = FindStr4End(typeTagsBegin_, end);
+                    if (arguments_ == 0) {
+                        return "type tags were not terminated before end of message";
+                    }
+
+                    ++typeTagsBegin_; // advance past initial ','
+
+                    const char*  typeTag    = typeTagsBegin_;
+                    const char*  argument   = arguments_;
+                    unsigned int arrayLevel = 0;
+
+                    do {
+                        switch (*typeTag) {
+                        case TRUE_TYPE_TAG:
+                        case FALSE_TYPE_TAG:
+                        case NIL_TYPE_TAG:
+                        case INFINITUM_TYPE_TAG:
+                            // zero length
+                            break;
+
+                            //    [ Indicates the beginning of an array. The tags following are for
+                            //        data in the Array until a close brace tag is reached.
+                            //    ] Indicates the end of an array.
+                        case ARRAY_BEGIN_TYPE_TAG:
+                            ++arrayLevel;
+                            // (zero length argument data)
+                            break;
+
+                        case ARRAY_END_TYPE_TAG:
+                            if (arrayLevel == 0)
+                                return "array close tag ']' without matching open tag '['";
+                            --arrayLevel;
+                            // (zero length argument data)
+                            break;
+
+                        case INT32_TYPE_TAG:
+                        case FLOAT_TYPE_TAG:
+                        case CHAR_TYPE_TAG:
+                        case RGBA_COLOR_TYPE_TAG:
+                        case MIDI_MESSAGE_TYPE_TAG:
+
+                            if (argument == end)
+                                return "arguments exceed message size";
+                            argument += 4;
+                            if (argument > end)
+                                return "arguments exceed message size";
+                            break;
+
+                        case INT64_TYPE_TAG:
+                        case TIME_TAG_TYPE_TAG:
+                        case DOUBLE_TYPE_TAG:
+
+                            if (argument == end)
+                                return "arguments exceed message size";
+                            argument += 8;
+                            if (argument > end)
+                                return "arguments exceed message size";
+                            break;
+
+                        case STRING_TYPE_TAG:
+                        case SYMBOL_TYPE_TAG:
+
+                            if (argument == end)
+                                return "arguments exceed message size";
+                            argument = FindStr4End(argument, end);
+                            if (argument == 0)
+                                return "unterminated string argument";
+                            break;
+
+                        case BLOB_TYPE_TAG: {
+                            if (argument + osctap::OSC_SIZEOF_INT32 > end)
+                                return "arguments exceed message size";
+
+                            // treat blob size as an unsigned int for the purposes of this calculation
+                            uint32_t blobSize = ToUInt32(argument);
+                            if (!IsValidElementSizeValue((osc_bundle_element_size_t)blobSize))
+                                return "invalid blob size";
+
+                            // Compare sizes rather than advancing the pointer first: a huge
+                            // blobSize must not be allowed to overflow the pointer (or RoundUp4)
+                            // and thereby slip past the bounds check. blobData <= end is
+                            // guaranteed by the check above.
+                            const char* blobData = argument + osctap::OSC_SIZEOF_INT32;
+                            if (RoundUp4(blobSize) > (uint32_t)(end - blobData))
+                                return "arguments exceed message size";
+
+                            argument = blobData + RoundUp4(blobSize);
+                        } break;
+
+                        default:
+                            return "unknown type tag";
+                        }
+
+                    } while (*++typeTag != '\0');
+                    typeTagsEnd_ = typeTag;
+
+                    if (arrayLevel != 0)
+                        return "array was not terminated before end of message (expected ']' end of array tag)";
+                }
+
+                // These invariants should be guaranteed by the above code.
+                // we depend on them in the implementation of ArgumentCount()
 #ifndef NDEBUG
-        std::ptrdiff_t argumentCount = typeTagsEnd_ - typeTagsBegin_;
-        assert( argumentCount >= 0 );
-        assert( argumentCount <= OSC_INT32_MAX );
+                std::ptrdiff_t argumentCount = typeTagsEnd_ - typeTagsBegin_;
+                assert(argumentCount >= 0);
+                assert(argumentCount <= OSC_INT32_MAX);
 #endif
-      }
+            }
 
-      return nullptr;
-    }
+            return nullptr;
+        }
 
-    // Throwing wrapper used by the constructors (preserves the original API).
-    void Init( const char *message, osc_bundle_element_size_t size )
-    {
-      if( const char* err = TryInit( message, size ) )
-        OSCTAP_THROW( MalformedMessageException( err ) );
-    }
-  public:
-    // Default-constructs an empty (invalid) message for use with the non-throwing
-    // TryInit() below. Reading it before a successful TryInit() is undefined.
-    ReceivedMessage()
-      : addressPattern_( nullptr ), typeTagsBegin_( nullptr )
-      , typeTagsEnd_( nullptr ), arguments_( nullptr ), size_( 0 ) {}
+        // Throwing wrapper used by the constructors (preserves the original API).
+        void Init(const char* message, osc_bundle_element_size_t size) {
+            if (const char* err = TryInit(message, size))
+                OSCTAP_THROW(MalformedMessageException(err));
+        }
 
-    explicit ReceivedMessage( const ReceivedPacket& packet )
-      : addressPattern_( packet.Contents() ), size_{packet.Size()}
-    {
-      Init( packet.Contents(), packet.Size() );
-    }
-    explicit ReceivedMessage( const ReceivedBundleElement& bundleElement )
-      : addressPattern_( bundleElement.Contents() ), size_{bundleElement.Size()}
-    {
-      Init( bundleElement.Contents(), bundleElement.Size() );
-    }
+      public:
+        // Default-constructs an empty (invalid) message for use with the non-throwing
+        // TryInit() below. Reading it before a successful TryInit() is undefined.
+        ReceivedMessage()
+            : addressPattern_(nullptr)
+            , typeTagsBegin_(nullptr)
+            , typeTagsEnd_(nullptr)
+            , arguments_(nullptr)
+            , size_(0) {}
 
-    // Non-throwing structural validation of a message body, without retaining the
-    // parsed object. nullptr == well-formed.
-    static const char* Validate( const char *message, osc_bundle_element_size_t size )
-    {
-      ReceivedMessage m;
-      return m.TryInit( message, size );
-    }
-    const char *AddressPattern() const OSCTAP_REALTIME { return addressPattern_; }
+        explicit ReceivedMessage(const ReceivedPacket& packet)
+            : addressPattern_(packet.Contents())
+            , size_{packet.Size()} {
+            Init(packet.Contents(), packet.Size());
+        }
+        explicit ReceivedMessage(const ReceivedBundleElement& bundleElement)
+            : addressPattern_(bundleElement.Contents())
+            , size_{bundleElement.Size()} {
+            Init(bundleElement.Contents(), bundleElement.Size());
+        }
 
-    // Support for non-standard SuperCollider integer address patterns:
-    bool AddressPatternIsUInt32() const
-    {
-      return (addressPattern_[0] == '\0');
-    }
-    uint32_t AddressPatternAsUInt32() const
-    {
-      return ToUInt32( addressPattern_ );
-    }
+        // Non-throwing structural validation of a message body, without retaining the
+        // parsed object. nullptr == well-formed.
+        static const char* Validate(const char* message, osc_bundle_element_size_t size) {
+            ReceivedMessage m;
+            return m.TryInit(message, size);
+        }
+        const char* AddressPattern() const OSCTAP_REALTIME { return addressPattern_; }
 
-    uint32_t ArgumentCount() const OSCTAP_REALTIME { return static_cast<uint32_t>(typeTagsEnd_ - typeTagsBegin_); }
+        // Support for non-standard SuperCollider integer address patterns:
+        bool     AddressPatternIsUInt32() const { return (addressPattern_[0] == '\0'); }
+        uint32_t AddressPatternAsUInt32() const { return ToUInt32(addressPattern_); }
 
-    const char *TypeTags() const OSCTAP_REALTIME { return typeTagsBegin_; }
+        uint32_t ArgumentCount() const OSCTAP_REALTIME { return static_cast<uint32_t>(typeTagsEnd_ - typeTagsBegin_); }
 
+        const char* TypeTags() const OSCTAP_REALTIME { return typeTagsBegin_; }
 
-    typedef ReceivedMessageArgumentIterator const_iterator;
+        typedef ReceivedMessageArgumentIterator const_iterator;
 
-    ReceivedMessageArgumentIterator ArgumentsBegin() const OSCTAP_REALTIME
-    {
-      return ReceivedMessageArgumentIterator( typeTagsBegin_, arguments_ );
-    }
+        ReceivedMessageArgumentIterator ArgumentsBegin() const OSCTAP_REALTIME {
+            return ReceivedMessageArgumentIterator(typeTagsBegin_, arguments_);
+        }
 
-    ReceivedMessageArgumentIterator ArgumentsEnd() const OSCTAP_REALTIME
-    {
-      return ReceivedMessageArgumentIterator( typeTagsEnd_, 0 );
-    }
+        ReceivedMessageArgumentIterator ArgumentsEnd() const OSCTAP_REALTIME {
+            return ReceivedMessageArgumentIterator(typeTagsEnd_, 0);
+        }
 
-    ReceivedMessageArgumentStream ArgumentStream() const
-    {
-      return ReceivedMessageArgumentStream( ArgumentsBegin(), ArgumentsEnd() );
-    }
+        ReceivedMessageArgumentStream ArgumentStream() const {
+            return ReceivedMessageArgumentStream(ArgumentsBegin(), ArgumentsEnd());
+        }
 
-    osc_bundle_element_size_t size() const { return size_; }
-    const char* data() const { return addressPattern_; }
+        osc_bundle_element_size_t size() const { return size_; }
+        const char*               data() const { return addressPattern_; }
 
-  private:
-    friend class OwnedMessage;
+      private:
+        friend class OwnedMessage;
 
-    explicit ReceivedMessage(
-            const char *addressPattern,
-            const char *typeTagsBegin,
-            const char *typeTagsEnd,
-            const char *arguments,
-            const osc_bundle_element_size_t size):
-        addressPattern_{addressPattern},
-        typeTagsBegin_{typeTagsBegin},
-        typeTagsEnd_{typeTagsEnd},
-        arguments_{arguments},
-        size_{size}
-    {
+        explicit ReceivedMessage(const char* addressPattern, const char* typeTagsBegin, const char* typeTagsEnd,
+                                 const char* arguments, const osc_bundle_element_size_t size)
+            : addressPattern_{addressPattern}
+            , typeTagsBegin_{typeTagsBegin}
+            , typeTagsEnd_{typeTagsEnd}
+            , arguments_{arguments}
+            , size_{size} {}
 
-    }
-
-    const char *addressPattern_;
-    const char *typeTagsBegin_;
-    const char *typeTagsEnd_;
-    const char *arguments_;
-    osc_bundle_element_size_t size_; // not const: TryInit() (re)assigns during parse
-};
+        const char*               addressPattern_;
+        const char*               typeTagsBegin_;
+        const char*               typeTagsEnd_;
+        const char*               arguments_;
+        osc_bundle_element_size_t size_; // not const: TryInit() (re)assigns during parse
+    };
 
 #ifndef OSCTAP_FREESTANDING
-// OwnedMessage copies the message into a std::vector. It is hosted-only and
-// excluded from the freestanding profile (no dynamic allocation / no <vector>).
-class OwnedMessage
-{
-    explicit OwnedMessage(const ReceivedMessage& other):
-        buffer_(other.AddressPattern(), other.AddressPattern() + other.size()),
-        message_(buffer_.data(),
-                (other.typeTagsBegin_ ? buffer_.data() + (other.typeTagsBegin_ - other.addressPattern_) : (const char*)nullptr),
-                (other.typeTagsEnd_   ? buffer_.data() + (other.typeTagsEnd_   - other.addressPattern_) : (const char*)nullptr),
-                (other.arguments_     ? buffer_.data() + (other.arguments_     - other.addressPattern_) : (const char*)nullptr),
-                other.size())
-    {
+    // OwnedMessage copies the message into a std::vector. It is hosted-only and
+    // excluded from the freestanding profile (no dynamic allocation / no <vector>).
+    class OwnedMessage {
+        explicit OwnedMessage(const ReceivedMessage& other)
+            : buffer_(other.AddressPattern(), other.AddressPattern() + other.size())
+            , message_(buffer_.data(),
+                       (other.typeTagsBegin_ ? buffer_.data() + (other.typeTagsBegin_ - other.addressPattern_)
+                                             : (const char*)nullptr),
+                       (other.typeTagsEnd_ ? buffer_.data() + (other.typeTagsEnd_ - other.addressPattern_)
+                                           : (const char*)nullptr),
+                       (other.arguments_ ? buffer_.data() + (other.arguments_ - other.addressPattern_)
+                                         : (const char*)nullptr),
+                       other.size()) {}
 
-    }
+        operator const ReceivedMessage&() { return message_; }
 
-    operator const ReceivedMessage&() { return message_; }
-  private:
-    std::vector<char> buffer_;
-    ReceivedMessage message_;
-};
+      private:
+        std::vector<char> buffer_;
+        ReceivedMessage   message_;
+    };
 #endif // OSCTAP_FREESTANDING
 
-class ReceivedBundle{
-  public:
-    // Non-throwing parse + structural validation of the bundle framing (size,
-    // "#bundle" tag, and element-size table). Returns nullptr on success (members
-    // set), or a static error string. Single source of truth; the throwing Init()
-    // delegates here. Note: this validates the bundle's own framing, not the
-    // contents of each element -- use TryValidatePacket() for a full recursive
-    // check before reading untrusted bundles on a no-exceptions build.
-    const char* TryInit( const char *bundle, osc_bundle_element_size_t size )
-    {
-      elementCount_ = 0;
+    class ReceivedBundle {
+      public:
+        // Non-throwing parse + structural validation of the bundle framing (size,
+        // "#bundle" tag, and element-size table). Returns nullptr on success (members
+        // set), or a static error string. Single source of truth; the throwing Init()
+        // delegates here. Note: this validates the bundle's own framing, not the
+        // contents of each element -- use TryValidatePacket() for a full recursive
+        // check before reading untrusted bundles on a no-exceptions build.
+        const char* TryInit(const char* bundle, osc_bundle_element_size_t size) {
+            elementCount_ = 0;
 
-      if( !IsValidElementSizeValue(size) )
-        return "invalid bundle size";
+            if (!IsValidElementSizeValue(size))
+                return "invalid bundle size";
 
-      if( size < 16 )
-        return "packet too short for bundle";
+            if (size < 16)
+                return "packet too short for bundle";
 
-      if( !IsMultipleOf4(size) )
-        return "bundle size must be multiple of four";
+            if (!IsMultipleOf4(size))
+                return "bundle size must be multiple of four";
 
-      if( bundle[0] != '#'
-          || bundle[1] != 'b'
-          || bundle[2] != 'u'
-          || bundle[3] != 'n'
-          || bundle[4] != 'd'
-          || bundle[5] != 'l'
-          || bundle[6] != 'e'
-          || bundle[7] != '\0' )
-        return "bad bundle address pattern";
+            if (bundle[0] != '#' || bundle[1] != 'b' || bundle[2] != 'u' || bundle[3] != 'n' || bundle[4] != 'd'
+                || bundle[5] != 'l' || bundle[6] != 'e' || bundle[7] != '\0')
+                return "bad bundle address pattern";
 
-      end_ = bundle + size;
+            end_ = bundle + size;
 
-      timeTag_ = bundle + 8;
+            timeTag_ = bundle + 8;
 
-      const char *p = timeTag_ + 8;
+            const char* p = timeTag_ + 8;
 
-      while( p < end_ ){
-        if( p + osctap::OSC_SIZEOF_INT32 > end_ )
-          return "packet too short for elementSize";
+            while (p < end_) {
+                if (p + osctap::OSC_SIZEOF_INT32 > end_)
+                    return "packet too short for elementSize";
 
-        // treat element size as an unsigned int for the purposes of this calculation
-        uint32_t elementSize = ToUInt32( p );
-        if( (elementSize & ((uint32_t)0x03)) != 0 )
-          return "bundle element size must be multiple of four";
+                // treat element size as an unsigned int for the purposes of this calculation
+                uint32_t elementSize = ToUInt32(p);
+                if ((elementSize & ((uint32_t)0x03)) != 0)
+                    return "bundle element size must be multiple of four";
 
-        // Compare sizes rather than advancing the pointer first, so that a huge
-        // elementSize can't overflow the pointer and slip past the bounds check.
-        const char *elementData = p + osctap::OSC_SIZEOF_INT32;
-        if( elementSize > (uint32_t)(end_ - elementData) )
-          return "packet too short for bundle element";
+                // Compare sizes rather than advancing the pointer first, so that a huge
+                // elementSize can't overflow the pointer and slip past the bounds check.
+                const char* elementData = p + osctap::OSC_SIZEOF_INT32;
+                if (elementSize > (uint32_t)(end_ - elementData))
+                    return "packet too short for bundle element";
 
-        p = elementData + elementSize;
+                p = elementData + elementSize;
 
-        ++elementCount_;
-      }
+                ++elementCount_;
+            }
 
-      if( p != end_ )
-        return "bundle contents did not match bundle size";
+            if (p != end_)
+                return "bundle contents did not match bundle size";
 
-      return nullptr;
+            return nullptr;
+        }
+
+        // Throwing wrapper used by the constructors (preserves the original API).
+        void Init(const char* bundle, osc_bundle_element_size_t size) {
+            if (const char* err = TryInit(bundle, size))
+                OSCTAP_THROW(MalformedBundleException(err));
+        }
+
+        // Default-constructs an empty (invalid) bundle for use with TryInit().
+        ReceivedBundle()
+            : timeTag_(nullptr)
+            , end_(nullptr)
+            , elementCount_(0) {}
+
+        explicit ReceivedBundle(const ReceivedPacket& packet)
+            : elementCount_(0) {
+            Init(packet.Contents(), packet.Size());
+        }
+        explicit ReceivedBundle(const ReceivedBundleElement& bundleElement)
+            : elementCount_(0) {
+            Init(bundleElement.Contents(), bundleElement.Size());
+        }
+
+        // Non-throwing structural validation of the bundle framing, without retaining
+        // the parsed object. nullptr == well-formed framing.
+        static const char* Validate(const char* bundle, osc_bundle_element_size_t size) {
+            ReceivedBundle b;
+            return b.TryInit(bundle, size);
+        }
+
+        uint64_t TimeTag() const { return ToUInt64(timeTag_); }
+
+        uint32_t ElementCount() const { return elementCount_; }
+
+        typedef ReceivedBundleElementIterator const_iterator;
+
+        ReceivedBundleElementIterator ElementsBegin() const { return ReceivedBundleElementIterator(timeTag_ + 8); }
+
+        ReceivedBundleElementIterator ElementsEnd() const { return ReceivedBundleElementIterator(end_); }
+
+      private:
+        const char* timeTag_;
+        const char* end_;
+        uint32_t    elementCount_;
+    };
+
+    inline auto begin(const osctap::ReceivedMessage& mes) {
+        return mes.ArgumentsBegin();
     }
 
-    // Throwing wrapper used by the constructors (preserves the original API).
-    void Init( const char *bundle, osc_bundle_element_size_t size )
-    {
-      if( const char* err = TryInit( bundle, size ) )
-        OSCTAP_THROW( MalformedBundleException( err ) );
+    inline auto end(const osctap::ReceivedMessage& mes) {
+        return mes.ArgumentsEnd();
     }
 
-    // Default-constructs an empty (invalid) bundle for use with TryInit().
-    ReceivedBundle()
-      : timeTag_( nullptr ), end_( nullptr ), elementCount_( 0 ) {}
+    // Non-throwing, recursive validation of a complete OSC packet -- a message, or a
+    // bundle whose every element is itself well-formed, recursively. Returns nullptr
+    // if [data, data+size) is fully well-formed and therefore safe to construct *and
+    // read in full* without any OSCTAP_THROW firing; otherwise a static error string.
+    //
+    // This is the gate to use before handling untrusted input on a no-exceptions /
+    // freestanding build, where a malformed packet would otherwise hit the fatal
+    // handler (abort) during construction or iteration:
+    //
+    //     if( osctap::TryValidatePacket(buf, n) == nullptr ) {
+    //         osctap::ReceivedPacket p(buf, n);          // won't abort
+    //         ... read the message / iterate the bundle ...
+    //     } else {
+    //         ... drop the datagram ...
+    //     }
+    //
+    // maxBundleNestingDepth bounds the recursion so a deeply-nested bundle from an
+    // attacker cannot exhaust the stack (mirrors OscPacketListener's dispatch bound).
+    inline const char* TryValidatePacket(const char* data, osc_bundle_element_size_t size,
+                                         unsigned int maxBundleNestingDepth = 64) {
+        if (const char* err = ReceivedPacket::ValidateSizeNoThrow(size))
+            return err;
 
-    explicit ReceivedBundle( const ReceivedPacket& packet )
-      : elementCount_( 0 )
-    {
-      Init( packet.Contents(), packet.Size() );
+        if (size > 0 && data[0] == '#') {
+            // Bundle: validate the framing, then recurse into each element's contents.
+            if (const char* err = ReceivedBundle::Validate(data, size))
+                return err;
+            if (maxBundleNestingDepth == 0)
+                return "bundle nested too deeply";
+
+            const char* end = data + size;
+            const char* p   = data + 16; // skip "#bundle\0" (8) + time tag (8)
+            while (p < end) {
+                // Framing was validated above: elementSize is multiple-of-4 and in bounds.
+                uint32_t    elementSize = ToUInt32(p);
+                const char* elementData = p + osctap::OSC_SIZEOF_INT32;
+                if (const char* err = TryValidatePacket(elementData, (osc_bundle_element_size_t)elementSize,
+                                                        maxBundleNestingDepth - 1))
+                    return err;
+                p = elementData + elementSize;
+            }
+            return nullptr;
+        }
+
+        // Message.
+        return ReceivedMessage::Validate(data, size);
     }
-    explicit ReceivedBundle( const ReceivedBundleElement& bundleElement )
-      : elementCount_( 0 )
-    {
-      Init( bundleElement.Contents(), bundleElement.Size() );
-    }
-
-    // Non-throwing structural validation of the bundle framing, without retaining
-    // the parsed object. nullptr == well-formed framing.
-    static const char* Validate( const char *bundle, osc_bundle_element_size_t size )
-    {
-      ReceivedBundle b;
-      return b.TryInit( bundle, size );
-    }
-
-    uint64_t TimeTag() const
-    {
-      return ToUInt64( timeTag_ );
-    }
-
-    uint32_t ElementCount() const { return elementCount_; }
-
-    typedef ReceivedBundleElementIterator const_iterator;
-
-    ReceivedBundleElementIterator ElementsBegin() const
-    {
-      return ReceivedBundleElementIterator( timeTag_ + 8 );
-    }
-
-    ReceivedBundleElementIterator ElementsEnd() const
-    {
-      return ReceivedBundleElementIterator( end_ );
-    }
-
-  private:
-    const char *timeTag_;
-    const char *end_;
-    uint32_t elementCount_;
-};
-
-
-inline auto begin(const osctap::ReceivedMessage& mes)
-{
-  return mes.ArgumentsBegin();
-}
-
-inline auto end(const osctap::ReceivedMessage& mes)
-{
-  return mes.ArgumentsEnd();
-}
-
-
-// Non-throwing, recursive validation of a complete OSC packet -- a message, or a
-// bundle whose every element is itself well-formed, recursively. Returns nullptr
-// if [data, data+size) is fully well-formed and therefore safe to construct *and
-// read in full* without any OSCTAP_THROW firing; otherwise a static error string.
-//
-// This is the gate to use before handling untrusted input on a no-exceptions /
-// freestanding build, where a malformed packet would otherwise hit the fatal
-// handler (abort) during construction or iteration:
-//
-//     if( osctap::TryValidatePacket(buf, n) == nullptr ) {
-//         osctap::ReceivedPacket p(buf, n);          // won't abort
-//         ... read the message / iterate the bundle ...
-//     } else {
-//         ... drop the datagram ...
-//     }
-//
-// maxBundleNestingDepth bounds the recursion so a deeply-nested bundle from an
-// attacker cannot exhaust the stack (mirrors OscPacketListener's dispatch bound).
-inline const char* TryValidatePacket( const char *data, osc_bundle_element_size_t size,
-                                      unsigned int maxBundleNestingDepth = 64 )
-{
-  if( const char* err = ReceivedPacket::ValidateSizeNoThrow( size ) )
-    return err;
-
-  if( size > 0 && data[0] == '#' ){
-    // Bundle: validate the framing, then recurse into each element's contents.
-    if( const char* err = ReceivedBundle::Validate( data, size ) )
-      return err;
-    if( maxBundleNestingDepth == 0 )
-      return "bundle nested too deeply";
-
-    const char *end = data + size;
-    const char *p = data + 16; // skip "#bundle\0" (8) + time tag (8)
-    while( p < end ){
-      // Framing was validated above: elementSize is multiple-of-4 and in bounds.
-      uint32_t elementSize = ToUInt32( p );
-      const char *elementData = p + osctap::OSC_SIZEOF_INT32;
-      if( const char* err = TryValidatePacket( elementData,
-              (osc_bundle_element_size_t)elementSize, maxBundleNestingDepth - 1 ) )
-        return err;
-      p = elementData + elementSize;
-    }
-    return nullptr;
-  }
-
-  // Message.
-  return ReceivedMessage::Validate( data, size );
-}
 
 } // namespace osctap
-
-
 
 // Backwards-compatibility alias: this library was formerly named oscpack.
 // Existing code that uses the oscpack:: namespace continues to compile.

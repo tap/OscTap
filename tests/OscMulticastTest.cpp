@@ -8,11 +8,6 @@
     so it never false-fails on a restricted runner.
 */
 
-#include "ip/UdpSocket.h"
-#include "ip/IpEndpointName.h"
-#include "osc/OscPacketListener.h"
-#include "osc/OscOutboundPacketStream.h"
-
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -22,38 +17,48 @@
 #include <thread>
 #include <vector>
 
+#include "ip/IpEndpointName.h"
+#include "ip/UdpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscPacketListener.h"
+
 namespace {
 
-class RecordingListener : public osctap::OscPacketListener {
-public:
-    std::atomic<int> count{ 0 };
-    std::vector<std::string> addresses; // written by receive thread, read after join
-    std::vector<int>         values;
+    class RecordingListener : public osctap::OscPacketListener {
+      public:
+        std::atomic<int>         count{0};
+        std::vector<std::string> addresses; // written by receive thread, read after join
+        std::vector<int>         values;
 
-protected:
-    void ProcessMessage( const osctap::ReceivedMessage& m, const osctap::IpEndpointName& ) override
-    {
-        addresses.emplace_back( m.AddressPattern() );
-        int v = 0;
-        auto a = m.ArgumentsBegin();
-        if( a != m.ArgumentsEnd() && a->IsInt32() ) v = a->AsInt32Unchecked();
-        values.push_back( v );
-        count.fetch_add( 1, std::memory_order_relaxed );
-    }
-};
+      protected:
+        void ProcessMessage(const osctap::ReceivedMessage& m, const osctap::IpEndpointName&) override {
+            addresses.emplace_back(m.AddressPattern());
+            int  v = 0;
+            auto a = m.ArgumentsBegin();
+            if (a != m.ArgumentsEnd() && a->IsInt32())
+                v = a->AsInt32Unchecked();
+            values.push_back(v);
+            count.fetch_add(1, std::memory_order_relaxed);
+        }
+    };
 
-int failures = 0;
-#define CHECK(c) do{ if(!(c)){ std::printf("FAIL line %d: %s\n", __LINE__, #c); ++failures; } }while(0)
+    int failures = 0;
+#define CHECK(c)                                                                                                       \
+    do {                                                                                                               \
+        if (!(c)) {                                                                                                    \
+            std::printf("FAIL line %d: %s\n", __LINE__, #c);                                                           \
+            ++failures;                                                                                                \
+        }                                                                                                              \
+    } while (0)
 
 } // namespace
 
-int main()
-{
+int main() {
 #ifndef _WIN32
     // A multicast send to an unrouted group can raise SIGPIPE on macOS/BSD; ignore
     // it so the send merely fails and the test SKIPs instead of being killed. (The
     // UDP backend also sets SO_NOSIGPIPE; this is belt-and-suspenders.)
-    std::signal( SIGPIPE, SIG_IGN );
+    std::signal(SIGPIPE, SIG_IGN);
 #endif
 
     // Administratively-scoped multicast group (239.0.0.0/8).
@@ -63,37 +68,39 @@ int main()
 
     // Bind to an OS-assigned port on all interfaces, then join the group on it.
     osctap::UdpListeningReceiveSocket* receiver = nullptr;
-    int port = 0;
+    int                                port     = 0;
     try {
-        receiver = new osctap::UdpListeningReceiveSocket(
-            osctap::IpEndpointName( osctap::IpEndpointName::ANY_ADDRESS, 0 ), &listener );
-        port = receiver->LocalPort();
-        receiver->JoinMulticastGroup( osctap::IpEndpointName( A, B, C, D, port ) );
-    } catch( const std::exception& e ) {
-        std::printf( "OscMulticastTest: SKIP (multicast unavailable: %s)\n", e.what() );
+        receiver = new osctap::UdpListeningReceiveSocket(osctap::IpEndpointName(osctap::IpEndpointName::ANY_ADDRESS, 0),
+                                                         &listener);
+        port     = receiver->LocalPort();
+        receiver->JoinMulticastGroup(osctap::IpEndpointName(A, B, C, D, port));
+    }
+    catch (const std::exception& e) {
+        std::printf("OscMulticastTest: SKIP (multicast unavailable: %s)\n", e.what());
         delete receiver;
         return 0;
     }
 
-    std::thread runner( [&]{ receiver->Run(); } );
+    std::thread runner([&] { receiver->Run(); });
 
     bool sent = false;
     try {
-        osctap::UdpTransmitSocket sender( osctap::IpEndpointName( A, B, C, D, port ) );
-        char buf[128];
-        for( int i = 0; i < 3; ++i ){
-            osctap::OutboundPacketStream p( buf, sizeof(buf) );
-            p << osctap::BeginMessage( "/mc" ) << (int32_t)(100 + i) << osctap::EndMessage();
-            sender.Send( p.Data(), p.Size() );
+        osctap::UdpTransmitSocket sender(osctap::IpEndpointName(A, B, C, D, port));
+        char                      buf[128];
+        for (int i = 0; i < 3; ++i) {
+            osctap::OutboundPacketStream p(buf, sizeof(buf));
+            p << osctap::BeginMessage("/mc") << (int32_t)(100 + i) << osctap::EndMessage();
+            sender.Send(p.Data(), p.Size());
         }
         sent = true;
-    } catch( const std::exception& e ) {
-        std::printf( "OscMulticastTest: SKIP (multicast send unavailable: %s)\n", e.what() );
+    }
+    catch (const std::exception& e) {
+        std::printf("OscMulticastTest: SKIP (multicast send unavailable: %s)\n", e.what());
     }
 
-    if( sent ){
-        for( int i = 0; i < 500 && listener.count.load() < 3; ++i )
-            std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+    if (sent) {
+        for (int i = 0; i < 500 && listener.count.load() < 3; ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     receiver->AsynchronousBreak();
@@ -101,26 +108,31 @@ int main()
 
     // No delivery is ambiguous (often a sandbox without multicast routing on the
     // default interface), so SKIP rather than fail.
-    if( !sent || listener.count.load() == 0 ){
-        std::printf( "OscMulticastTest: SKIP (no multicast delivery in this environment)\n" );
+    if (!sent || listener.count.load() == 0) {
+        std::printf("OscMulticastTest: SKIP (no multicast delivery in this environment)\n");
         delete receiver;
         return 0;
     }
 
-    CHECK( listener.count.load() == 3 );
-    if( listener.addresses.size() == 3 ){
-        CHECK( listener.addresses[0] == "/mc" && listener.values[0] == 100 );
-        CHECK( listener.addresses[1] == "/mc" && listener.values[1] == 101 );
-        CHECK( listener.addresses[2] == "/mc" && listener.values[2] == 102 );
+    CHECK(listener.count.load() == 3);
+    if (listener.addresses.size() == 3) {
+        CHECK(listener.addresses[0] == "/mc" && listener.values[0] == 100);
+        CHECK(listener.addresses[1] == "/mc" && listener.values[1] == 101);
+        CHECK(listener.addresses[2] == "/mc" && listener.values[2] == 102);
     }
 
     // Leaving the group while the socket stays open should also succeed.
-    try { receiver->LeaveMulticastGroup( osctap::IpEndpointName( A, B, C, D, port ) ); }
-    catch( const std::exception& e ) { std::printf( "FAIL: leave: %s\n", e.what() ); ++failures; }
+    try {
+        receiver->LeaveMulticastGroup(osctap::IpEndpointName(A, B, C, D, port));
+    }
+    catch (const std::exception& e) {
+        std::printf("FAIL: leave: %s\n", e.what());
+        ++failures;
+    }
 
     delete receiver;
 
-    if( failures == 0 )
-        std::printf( "OscMulticastTest: OK (3 OSC messages over multicast 239.7.7.7)\n" );
+    if (failures == 0)
+        std::printf("OscMulticastTest: OK (3 OSC messages over multicast 239.7.7.7)\n");
     return failures == 0 ? 0 : 1;
 }

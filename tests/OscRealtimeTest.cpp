@@ -28,127 +28,141 @@
     read on the hot path through them.
 */
 
-#include "osc/OscReceivedElements.h"
-#include "osc/OscOutboundPacketStream.h"
-
 #include <cstdint>
 #include <cstring>
 #include <iostream>
 
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscReceivedElements.h"
+
 using namespace osctap;
 
 static int g_failures = 0;
-#define CHECK(cond) do { if(!(cond)) { \
-    std::cerr << "realtime test FAILED: " #cond " (line " << __LINE__ << ")\n"; \
-    ++g_failures; } } while(0)
+#define CHECK(cond)                                                                                                    \
+    do {                                                                                                               \
+        if (!(cond)) {                                                                                                 \
+            std::cerr << "realtime test FAILED: " #cond " (line " << __LINE__ << ")\n";                                \
+            ++g_failures;                                                                                              \
+        }                                                                                                              \
+    } while (0)
 
 // A small struct so the realtime function returns data without allocating.
 struct ReadResult {
-    int64_t  i32 = 0, i64 = 0;
-    double   f = 0.0, d = 0.0;
-    uint32_t rgba = 0, midi = 0;
-    uint64_t timetag = 0;
-    char     ch = 0;
-    bool     boolTrue = false, boolFalse = true;
-    const char *str = nullptr, *sym = nullptr;
-    const void *blob = nullptr;
-    osc_bundle_element_size_t blobSize = 0;
-    uint32_t argCount = 0;
-    char     firstAddrChar = 0;
+    int64_t                   i32 = 0, i64 = 0;
+    double                    f = 0.0, d = 0.0;
+    uint32_t                  rgba = 0, midi = 0;
+    uint64_t                  timetag  = 0;
+    char                      ch       = 0;
+    bool                      boolTrue = false, boolFalse = true;
+    const char *              str = nullptr, *sym = nullptr;
+    const void*               blob          = nullptr;
+    osc_bundle_element_size_t blobSize      = 0;
+    uint32_t                  argCount      = 0;
+    char                      firstAddrChar = 0;
 };
 
 // THE REALTIME HOT PATH: iterate an already-validated message and read every
 // argument through the throw-free OSCTAP_REALTIME accessors. No allocation, no
 // exceptions -- RTSan and -Wfunction-effects enforce this.
-static ReadResult ReadHotPath( const ReceivedMessage& m ) OSCTAP_REALTIME
-{
+static ReadResult ReadHotPath(const ReceivedMessage& m) OSCTAP_REALTIME {
     ReadResult r;
     r.firstAddrChar = m.AddressPattern()[0];
-    r.argCount = m.ArgumentCount();
+    r.argCount      = m.ArgumentCount();
 
-    for( ReceivedMessage::const_iterator i = m.ArgumentsBegin();
-         i != m.ArgumentsEnd(); ++i ){
-        switch( i->TypeTag() ){
-            case INT32_TYPE_TAG:        r.i32     = i->AsInt32Unchecked();      break;
-            case FLOAT_TYPE_TAG:        r.f       = i->AsFloatUnchecked();      break;
-            case CHAR_TYPE_TAG:         r.ch      = i->AsCharUnchecked();       break;
-            case RGBA_COLOR_TYPE_TAG:   r.rgba    = i->AsRgbaColorUnchecked();  break;
-            case MIDI_MESSAGE_TYPE_TAG: r.midi    = i->AsMidiMessageUnchecked();break;
-            case INT64_TYPE_TAG:        r.i64     = i->AsInt64Unchecked();      break;
-            case TIME_TAG_TYPE_TAG:     r.timetag = i->AsTimeTagUnchecked();    break;
-            case DOUBLE_TYPE_TAG:       r.d       = i->AsDoubleUnchecked();     break;
-            case STRING_TYPE_TAG:       r.str     = i->AsStringUnchecked();     break;
-            case SYMBOL_TYPE_TAG:       r.sym     = i->AsSymbolUnchecked();     break;
-            // AsBoolUnchecked() is throw-free / realtime-safe too, so read bool
-            // through it (its value lives in the type tag).
-            case TRUE_TYPE_TAG:         r.boolTrue  = i->AsBoolUnchecked();     break;
-            case FALSE_TYPE_TAG:        r.boolFalse = i->AsBoolUnchecked();     break;
-            // Blob: AsBlobUnchecked() is now throw-free / realtime-safe (the size
-            // was validated at construction), so the blob payload is read on the
-            // hot path too.
-            case BLOB_TYPE_TAG:         i->AsBlobUnchecked( r.blob, r.blobSize ); break;
-            // nil / infinitum / array markers: iterating past them is realtime-safe
-            // (Advance() does no allocation or throwing).
-            default: break;
+    for (ReceivedMessage::const_iterator i = m.ArgumentsBegin(); i != m.ArgumentsEnd(); ++i) {
+        switch (i->TypeTag()) {
+        case INT32_TYPE_TAG:
+            r.i32 = i->AsInt32Unchecked();
+            break;
+        case FLOAT_TYPE_TAG:
+            r.f = i->AsFloatUnchecked();
+            break;
+        case CHAR_TYPE_TAG:
+            r.ch = i->AsCharUnchecked();
+            break;
+        case RGBA_COLOR_TYPE_TAG:
+            r.rgba = i->AsRgbaColorUnchecked();
+            break;
+        case MIDI_MESSAGE_TYPE_TAG:
+            r.midi = i->AsMidiMessageUnchecked();
+            break;
+        case INT64_TYPE_TAG:
+            r.i64 = i->AsInt64Unchecked();
+            break;
+        case TIME_TAG_TYPE_TAG:
+            r.timetag = i->AsTimeTagUnchecked();
+            break;
+        case DOUBLE_TYPE_TAG:
+            r.d = i->AsDoubleUnchecked();
+            break;
+        case STRING_TYPE_TAG:
+            r.str = i->AsStringUnchecked();
+            break;
+        case SYMBOL_TYPE_TAG:
+            r.sym = i->AsSymbolUnchecked();
+            break;
+        // AsBoolUnchecked() is throw-free / realtime-safe too, so read bool
+        // through it (its value lives in the type tag).
+        case TRUE_TYPE_TAG:
+            r.boolTrue = i->AsBoolUnchecked();
+            break;
+        case FALSE_TYPE_TAG:
+            r.boolFalse = i->AsBoolUnchecked();
+            break;
+        // Blob: AsBlobUnchecked() is now throw-free / realtime-safe (the size
+        // was validated at construction), so the blob payload is read on the
+        // hot path too.
+        case BLOB_TYPE_TAG:
+            i->AsBlobUnchecked(r.blob, r.blobSize);
+            break;
+        // nil / infinitum / array markers: iterating past them is realtime-safe
+        // (Advance() does no allocation or throwing).
+        default:
+            break;
         }
     }
     return r;
 }
 
-int main()
-{
+int main() {
     // --- off the realtime thread: build + validate a known-good message ---
-    char buffer[512];
-    OutboundPacketStream p( buffer, sizeof(buffer) );
-    const unsigned char blobBytes[] = { 1, 2, 3, 4, 5 };
-    p << BeginMessage( "/rt/test" )
-      << (int32_t)42
-      << 3.5f
-      << 'z'
-      << RgbaColor( 0x11223344u )
-      << MidiMessage( 0x55667788u )
-      << (int64_t)0x0123456789ABCDEFLL
-      << TimeTag( 0xFEDCBA9876543210ULL )
-      << 2.5
-      << "hello"
-      << Symbol( "sym" )
-      << true
-      << false
-      << OscNil()
-      << Infinitum()
-      << Blob( blobBytes, (osc_bundle_element_size_t)sizeof(blobBytes) )
+    char                 buffer[512];
+    OutboundPacketStream p(buffer, sizeof(buffer));
+    const unsigned char  blobBytes[] = {1, 2, 3, 4, 5};
+    p << BeginMessage("/rt/test") << (int32_t)42 << 3.5f << 'z' << RgbaColor(0x11223344u) << MidiMessage(0x55667788u)
+      << (int64_t)0x0123456789ABCDEFLL << TimeTag(0xFEDCBA9876543210ULL) << 2.5 << "hello" << Symbol("sym") << true
+      << false << OscNil() << Infinitum()
+      << Blob(blobBytes, (osc_bundle_element_size_t)sizeof(blobBytes))
       // Empty array: exercises iterating past the '[' and ']' markers without a
       // nested element colliding with the top-level scalars asserted below.
-      << BeginArray() << EndArray()
-      << EndMessage();
-    CHECK( p.IsReady() );
+      << BeginArray() << EndArray() << EndMessage();
+    CHECK(p.IsReady());
 
     // Construction validates the packet (may throw) -- explicitly off-RT.
-    ReceivedMessage m( ReceivedPacket( p.Data(), p.Size() ) );
+    ReceivedMessage m(ReceivedPacket(p.Data(), p.Size()));
 
     // --- realtime region ---
-    ReadResult r = ReadHotPath( m );
+    ReadResult r = ReadHotPath(m);
 
     // --- verify the hot path read everything correctly ---
-    CHECK( r.firstAddrChar == '/' );
-    CHECK( r.i32 == 42 );
-    CHECK( r.f == 3.5 );
-    CHECK( r.ch == 'z' );
-    CHECK( r.rgba == 0x11223344u );
-    CHECK( r.midi == 0x55667788u );
-    CHECK( r.i64 == 0x0123456789ABCDEFLL );
-    CHECK( r.timetag == 0xFEDCBA9876543210ULL );
-    CHECK( r.d == 2.5 );
-    CHECK( r.str != nullptr && std::strcmp( r.str, "hello" ) == 0 );
-    CHECK( r.sym != nullptr && std::strcmp( r.sym, "sym" ) == 0 );
-    CHECK( r.boolTrue == true );
-    CHECK( r.boolFalse == false );
-    CHECK( r.argCount > 0 );
-    CHECK( r.blob != nullptr && r.blobSize == 5
-           && static_cast<const unsigned char*>(r.blob)[0] == 1
-           && static_cast<const unsigned char*>(r.blob)[4] == 5 );
+    CHECK(r.firstAddrChar == '/');
+    CHECK(r.i32 == 42);
+    CHECK(r.f == 3.5);
+    CHECK(r.ch == 'z');
+    CHECK(r.rgba == 0x11223344u);
+    CHECK(r.midi == 0x55667788u);
+    CHECK(r.i64 == 0x0123456789ABCDEFLL);
+    CHECK(r.timetag == 0xFEDCBA9876543210ULL);
+    CHECK(r.d == 2.5);
+    CHECK(r.str != nullptr && std::strcmp(r.str, "hello") == 0);
+    CHECK(r.sym != nullptr && std::strcmp(r.sym, "sym") == 0);
+    CHECK(r.boolTrue == true);
+    CHECK(r.boolFalse == false);
+    CHECK(r.argCount > 0);
+    CHECK(r.blob != nullptr && r.blobSize == 5 && static_cast<const unsigned char*>(r.blob)[0] == 1
+          && static_cast<const unsigned char*>(r.blob)[4] == 5);
 
-    if( g_failures == 0 )
+    if (g_failures == 0)
         std::cout << "realtime test: read hot path OK (RT-safe)\n";
     return g_failures == 0 ? 0 : 1;
 }

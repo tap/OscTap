@@ -46,55 +46,47 @@
 
 #include <cstring>
 
-namespace osctap
-{
-class NetworkInitializer
-{
-  public:
-    static const NetworkInitializer& instance()
-    {
-      static const NetworkInitializer ne;
-      return ne;
+namespace osctap {
+    class NetworkInitializer {
+      public:
+        static const NetworkInitializer& instance() {
+            static const NetworkInitializer ne;
+            return ne;
+        }
+
+      private:
+        NetworkInitializer() {
+            WSAData wsaData;
+            WSAStartup(MAKEWORD(1, 1), &wsaData);
+        }
+
+        ~NetworkInitializer() { WSACleanup(); }
+    };
+
+    inline unsigned long GetHostByName(const char* name) {
+        NetworkInitializer::instance();
+
+        unsigned long result = 0;
+
+        // getaddrinfo replaces the deprecated gethostbyname (MSVC C4996); mirrors the
+        // posix backend.
+        struct addrinfo hints;
+        std::memset(&hints, 0, sizeof(hints));
+        hints.ai_family   = AF_INET;
+        hints.ai_socktype = SOCK_DGRAM;
+        hints.ai_protocol = IPPROTO_UDP;
+
+        struct addrinfo* ai = nullptr;
+        if (getaddrinfo(name, nullptr, &hints, &ai) == 0 && ai) {
+            auto* remote = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
+            result       = ntohl(remote->sin_addr.s_addr);
+        }
+        if (ai)
+            freeaddrinfo(ai);
+
+        return result;
     }
-
-  private:
-    NetworkInitializer()
-    {
-      WSAData wsaData;
-      WSAStartup(MAKEWORD(1, 1), &wsaData);
-    }
-
-    ~NetworkInitializer()
-    {
-      WSACleanup();
-    }
-};
-
-inline unsigned long GetHostByName( const char *name )
-{
-  NetworkInitializer::instance();
-
-  unsigned long result = 0;
-
-  // getaddrinfo replaces the deprecated gethostbyname (MSVC C4996); mirrors the
-  // posix backend.
-  struct addrinfo hints;
-  std::memset( &hints, 0, sizeof(hints) );
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_protocol = IPPROTO_UDP;
-
-  struct addrinfo *ai = nullptr;
-  if( getaddrinfo( name, nullptr, &hints, &ai ) == 0 && ai ){
-    auto *remote = reinterpret_cast<struct sockaddr_in *>( ai->ai_addr );
-    result = ntohl( remote->sin_addr.s_addr );
-  }
-  if( ai )
-    freeaddrinfo( ai );
-
-  return result;
-}
-}
+} // namespace osctap
 
 // Backwards-compatibility alias: this library was formerly named oscpack.
 // Existing code that uses the oscpack:: namespace continues to compile.

@@ -6,8 +6,8 @@
     For a typed command-line sender see demos/osc_send.cpp.
 */
 
-#include "osc/OscOutboundPacketStream.h"
 #include "ip/UdpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
 
 using namespace oscpack; // OscTap's deprecated oscpack:: alias, exercised here
 
@@ -16,24 +16,20 @@ using namespace oscpack; // OscTap's deprecated oscpack:: alias, exercised here
 
 #define OUTPUT_BUFFER_SIZE 1024
 
-int main(int argc, char* argv[])
-{
-    (void) argc; // suppress unused parameter warnings
-    (void) argv;
+int main(int argc, char* argv[]) {
+    (void)argc; // suppress unused parameter warnings
+    (void)argv;
 
-    UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, PORT ) );
+    UdpTransmitSocket transmitSocket(IpEndpointName(ADDRESS, PORT));
 
-    char buffer[OUTPUT_BUFFER_SIZE];
-    OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+    char                 buffer[OUTPUT_BUFFER_SIZE];
+    OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
 
-    p << BeginBundleImmediate()
-        << BeginMessage( "/test1" )
-            << true << (int32_t)23 << (float)3.1415f << "hello" << EndMessage()
-        << BeginMessage( "/test2" )
-            << true << (int32_t)24 << (float)10.8f << "world" << EndMessage()
+    p << BeginBundleImmediate() << BeginMessage("/test1") << true << (int32_t)23 << (float)3.1415f << "hello"
+      << EndMessage() << BeginMessage("/test2") << true << (int32_t)24 << (float)10.8f << "world" << EndMessage()
       << EndBundle();
 
-    transmitSocket.Send( p.Data(), p.Size() );
+    transmitSocket.Send(p.Data(), p.Size());
 
     return 0;
 }

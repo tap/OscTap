@@ -37,33 +37,28 @@
 #ifndef INCLUDED_OSCTAP_OSCPRINTRECEIVEDELEMENTS_H
 #define INCLUDED_OSCTAP_OSCPRINTRECEIVEDELEMENTS_H
 
+#include <cstring>
+#include <ctime>
+#include <iomanip>
 #include <iosfwd>
+#include <iostream>
 
 #include "OscReceivedElements.h"
 
-#include <cstring>
-#include <ctime>
-#include <iostream>
-#include <iomanip>
+namespace osctap {
 
-namespace osctap{
+    template <typename Ostream_T>
+    Ostream_T& operator<<(Ostream_T& os, const ReceivedPacket& p);
+    template <typename Ostream_T>
+    Ostream_T& operator<<(Ostream_T& os, const ReceivedMessageArgument& arg);
+    template <typename Ostream_T>
+    Ostream_T& operator<<(Ostream_T& os, const ReceivedMessage& m);
+    template <typename Ostream_T>
+    Ostream_T& operator<<(Ostream_T& os, const ReceivedBundle& b);
 
-template<typename Ostream_T>
-Ostream_T& operator<<( Ostream_T & os, const ReceivedPacket& p );
-template<typename Ostream_T>
-Ostream_T& operator<<( Ostream_T & os, const ReceivedMessageArgument& arg );
-template<typename Ostream_T>
-Ostream_T& operator<<( Ostream_T & os, const ReceivedMessage& m );
-template<typename Ostream_T>
-Ostream_T& operator<<( Ostream_T & os, const ReceivedBundle& b );
-
-
-template<typename Ostream_T>
-inline Ostream_T& operator<<(
-    Ostream_T & os,
-    const ReceivedMessageArgument& arg )
-{
-    switch( arg.TypeTag() ){
+    template <typename Ostream_T>
+    inline Ostream_T& operator<<(Ostream_T& os, const ReceivedMessageArgument& arg) {
+        switch (arg.TypeTag()) {
         case TRUE_TYPE_TAG:
             os << "bool:true";
             break;
@@ -88,72 +83,54 @@ inline Ostream_T& operator<<(
             os << "float32:" << arg.AsFloatUnchecked();
             break;
 
-        case CHAR_TYPE_TAG:
-            {
-                char s[2] = {0};
-                s[0] = arg.AsCharUnchecked();
-                os << "char:'" << s << "'";
-            }
-            break;
+        case CHAR_TYPE_TAG: {
+            char s[2] = {0};
+            s[0]      = arg.AsCharUnchecked();
+            os << "char:'" << s << "'";
+        } break;
 
-        case RGBA_COLOR_TYPE_TAG:
-            {
-                uint32_t color = arg.AsRgbaColorUnchecked();
+        case RGBA_COLOR_TYPE_TAG: {
+            uint32_t color = arg.AsRgbaColorUnchecked();
 
-                os << "RGBA:0x"
-                        << std::hex << std::setfill('0')
-                        << std::setw(2) << (int)((color>>24) & 0xFF)
-                        << std::setw(2) << (int)((color>>16) & 0xFF)
-                        << std::setw(2) << (int)((color>>8) & 0xFF)
-                        << std::setw(2) << (int)(color & 0xFF)
-                        << std::setfill(' ');
-                os.unsetf(std::ios::basefield);
-            }
-            break;
+            os << "RGBA:0x" << std::hex << std::setfill('0') << std::setw(2) << (int)((color >> 24) & 0xFF)
+               << std::setw(2) << (int)((color >> 16) & 0xFF) << std::setw(2) << (int)((color >> 8) & 0xFF)
+               << std::setw(2) << (int)(color & 0xFF) << std::setfill(' ');
+            os.unsetf(std::ios::basefield);
+        } break;
 
-        case MIDI_MESSAGE_TYPE_TAG:
-            {
-                uint32_t m = arg.AsMidiMessageUnchecked();
-                os << "midi (port, status, data1, data2):<<"
-                        << std::hex << std::setfill('0')
-                        << "0x" << std::setw(2) << (int)((m>>24) & 0xFF)
-                        << " 0x" << std::setw(2) << (int)((m>>16) & 0xFF)
-                        << " 0x" << std::setw(2) << (int)((m>>8) & 0xFF)
-                        << " 0x" << std::setw(2) << (int)(m & 0xFF)
-                        << std::setfill(' ') << ">>";
-                os.unsetf(std::ios::basefield);
-            }
-            break;
+        case MIDI_MESSAGE_TYPE_TAG: {
+            uint32_t m = arg.AsMidiMessageUnchecked();
+            os << "midi (port, status, data1, data2):<<" << std::hex << std::setfill('0') << "0x" << std::setw(2)
+               << (int)((m >> 24) & 0xFF) << " 0x" << std::setw(2) << (int)((m >> 16) & 0xFF) << " 0x" << std::setw(2)
+               << (int)((m >> 8) & 0xFF) << " 0x" << std::setw(2) << (int)(m & 0xFF) << std::setfill(' ') << ">>";
+            os.unsetf(std::ios::basefield);
+        } break;
 
         case INT64_TYPE_TAG:
             os << "int64_t:" << arg.AsInt64Unchecked();
             break;
 
-        case TIME_TAG_TYPE_TAG:
-            {
-                os << "OSC-timetag:" << arg.AsTimeTagUnchecked() << " ";
+        case TIME_TAG_TYPE_TAG: {
+            os << "OSC-timetag:" << arg.AsTimeTagUnchecked() << " ";
 
-                std::time_t t =
-                        (unsigned long)( arg.AsTimeTagUnchecked() >> 32 );
+            std::time_t t = (unsigned long)(arg.AsTimeTagUnchecked() >> 32);
 
 #if defined(_MSC_VER)
-                // std::ctime is deprecated on MSVC (C4996); use the bounded ctime_s.
-                char timeBuf[32];
-                const char *timeString =
-                        ( ctime_s( timeBuf, sizeof(timeBuf), &t ) == 0 ) ? timeBuf : nullptr;
+            // std::ctime is deprecated on MSVC (C4996); use the bounded ctime_s.
+            char        timeBuf[32];
+            const char* timeString = (ctime_s(timeBuf, sizeof(timeBuf), &t) == 0) ? timeBuf : nullptr;
 #else
-                const char *timeString = std::ctime( &t );
+            const char* timeString = std::ctime(&t);
 #endif
-                // ctime()/ctime_s() can return null on failure; guard before reading.
-                if( timeString ){
-                    size_t len = std::strlen( timeString );
+            // ctime()/ctime_s() can return null on failure; guard before reading.
+            if (timeString) {
+                size_t len = std::strlen(timeString);
 
-                    // -1 to omit trailing newline from string returned by ctime()
-                    if( len > 1 )
-                        os.write( timeString, len - 1 );
-                }
+                // -1 to omit trailing newline from string returned by ctime()
+                if (len > 1)
+                    os.write(timeString, len - 1);
             }
-            break;
+        } break;
 
         case DOUBLE_TYPE_TAG:
             os << "double:" << arg.AsDoubleUnchecked();
@@ -167,22 +144,20 @@ inline Ostream_T& operator<<(
             os << "OSC-string (symbol):`" << arg.AsSymbolUnchecked() << "'";
             break;
 
-        case BLOB_TYPE_TAG:
-            {
-                const void *data;
-                osc_bundle_element_size_t size;
-                arg.AsBlobUnchecked( data, size );
-                os << "OSC-blob:<<" << std::hex << std::setfill('0');
-                unsigned char *p = (unsigned char*)data;
-                for( osc_bundle_element_size_t i = 0; i < size; ++i ){
-                    os << "0x" << std::setw(2) << int(p[i]);
-                    if( i != size-1 )
-                        os << ' ';
-                }
-                os.unsetf(std::ios::basefield);
-                os << ">>" << std::setfill(' ');
+        case BLOB_TYPE_TAG: {
+            const void*               data;
+            osc_bundle_element_size_t size;
+            arg.AsBlobUnchecked(data, size);
+            os << "OSC-blob:<<" << std::hex << std::setfill('0');
+            unsigned char* p = (unsigned char*)data;
+            for (osc_bundle_element_size_t i = 0; i < size; ++i) {
+                os << "0x" << std::setw(2) << int(p[i]);
+                if (i != size - 1)
+                    os << ' ';
             }
-            break;
+            os.unsetf(std::ios::basefield);
+            os << ">>" << std::setfill(' ');
+        } break;
 
         case ARRAY_BEGIN_TYPE_TAG:
             os << "[";
@@ -194,105 +169,100 @@ inline Ostream_T& operator<<(
 
         default:
             os << "unknown";
-    }
-
-    return os;
-}
-
-
-template<typename Ostream_T>
-inline Ostream_T& operator<<( Ostream_T& os, const ReceivedMessage& m )
-{
-    os << "[";
-    if( m.AddressPatternIsUInt32() )
-        os << m.AddressPatternAsUInt32();
-    else
-        os << m.AddressPattern();
-
-    bool first = true;
-    for( ReceivedMessage::const_iterator i = m.ArgumentsBegin();
-            i != m.ArgumentsEnd(); ++i ){
-        if( first ){
-            os << " ";
-            first = false;
-        }else{
-            os << ", ";
         }
 
-        os << *i;
+        return os;
     }
 
-    os << "]";
+    template <typename Ostream_T>
+    inline Ostream_T& operator<<(Ostream_T& os, const ReceivedMessage& m) {
+        os << "[";
+        if (m.AddressPatternIsUInt32())
+            os << m.AddressPatternAsUInt32();
+        else
+            os << m.AddressPattern();
 
-    return os;
-}
-
-
-template<typename Ostream_T>
-inline Ostream_T& operator<<( Ostream_T & os, const ReceivedBundle& b )
-{
-    static thread_local int indent = 0;
-
-    // Bound recursion depth so printing an untrusted, deeply-nested bundle
-    // cannot exhaust the stack.
-    const int MAX_BUNDLE_PRINT_DEPTH = 64;
-
-    for( int j=0; j < indent; ++j )
-        os << "  ";
-    os << "{ ( ";
-    if( b.TimeTag() == 1 )
-        os << "immediate";
-    else
-        os << b.TimeTag();
-    os << " )\n";
-
-    ++indent;
-
-    for( ReceivedBundle::const_iterator i = b.ElementsBegin();
-            i != b.ElementsEnd(); ++i ){
-        if( i->IsBundle() ){
-            if( indent >= MAX_BUNDLE_PRINT_DEPTH ){
-                for( int j=0; j < indent; ++j )
-                    os << "  ";
-                os << "{ ...bundle nesting depth limit reached... }\n";
-            }else{
-                ReceivedBundle nested(*i);
-                os << nested << "\n";
+        bool first = true;
+        for (ReceivedMessage::const_iterator i = m.ArgumentsBegin(); i != m.ArgumentsEnd(); ++i) {
+            if (first) {
+                os << " ";
+                first = false;
             }
-        }else{
-            ReceivedMessage m(*i);
-            for( int j=0; j < indent; ++j )
-                os << "  ";
+            else {
+                os << ", ";
+            }
+
+            os << *i;
+        }
+
+        os << "]";
+
+        return os;
+    }
+
+    template <typename Ostream_T>
+    inline Ostream_T& operator<<(Ostream_T& os, const ReceivedBundle& b) {
+        static thread_local int indent = 0;
+
+        // Bound recursion depth so printing an untrusted, deeply-nested bundle
+        // cannot exhaust the stack.
+        const int MAX_BUNDLE_PRINT_DEPTH = 64;
+
+        for (int j = 0; j < indent; ++j)
+            os << "  ";
+        os << "{ ( ";
+        if (b.TimeTag() == 1)
+            os << "immediate";
+        else
+            os << b.TimeTag();
+        os << " )\n";
+
+        ++indent;
+
+        for (ReceivedBundle::const_iterator i = b.ElementsBegin(); i != b.ElementsEnd(); ++i) {
+            if (i->IsBundle()) {
+                if (indent >= MAX_BUNDLE_PRINT_DEPTH) {
+                    for (int j = 0; j < indent; ++j)
+                        os << "  ";
+                    os << "{ ...bundle nesting depth limit reached... }\n";
+                }
+                else {
+                    ReceivedBundle nested(*i);
+                    os << nested << "\n";
+                }
+            }
+            else {
+                ReceivedMessage m(*i);
+                for (int j = 0; j < indent; ++j)
+                    os << "  ";
+                os << m << "\n";
+            }
+        }
+
+        --indent;
+
+        for (int j = 0; j < indent; ++j)
+            os << "  ";
+        os << "}";
+
+        return os;
+    }
+
+    template <typename Ostream_T>
+    inline Ostream_T& operator<<(Ostream_T& os, const ReceivedPacket& p) {
+        if (p.IsBundle()) {
+            ReceivedBundle b(p);
+            os << b << "\n";
+        }
+        else {
+            ReceivedMessage m(p);
             os << m << "\n";
         }
+
+        return os;
     }
-
-    --indent;
-
-    for( int j=0; j < indent; ++j )
-        os << "  ";
-    os << "}";
-
-    return os;
-}
-
-
-template<typename Ostream_T>
-inline Ostream_T& operator<<( Ostream_T& os, const ReceivedPacket& p )
-{
-    if( p.IsBundle() ){
-        ReceivedBundle b(p);
-        os << b << "\n";
-    }else{
-        ReceivedMessage m(p);
-        os << m << "\n";
-    }
-
-    return os;
-}
 
 } // namespace osctap
-
 
 // Backwards-compatibility alias: this library was formerly named oscpack.
 // Existing code that uses the oscpack:: namespace continues to compile.

@@ -12,62 +12,67 @@
         tcp_server [port]          (default port 9000)
 */
 
-#include "ip/TcpSocket.h"
-#include "ip/IpEndpointName.h"
-#include "osc/OscPacketListener.h"
-
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 
+#include "ip/IpEndpointName.h"
+#include "ip/TcpSocket.h"
+#include "osc/OscPacketListener.h"
+
 namespace {
 
-class PrintingListener : public osctap::OscPacketListener {
-    // Untrusted input: parsing can throw on a malformed frame. Catch it so one bad
-    // client can't take the server down.
-    void ProcessPacket( const char *data, int size, const osctap::IpEndpointName& from ) override
-    {
-        try {
-            osctap::OscPacketListener::ProcessPacket( data, size, from );
-        } catch( const osctap::Exception& e ) {
-            std::cerr << "[drop] malformed packet (" << e.what() << ")\n";
+    class PrintingListener : public osctap::OscPacketListener {
+        // Untrusted input: parsing can throw on a malformed frame. Catch it so one bad
+        // client can't take the server down.
+        void ProcessPacket(const char* data, int size, const osctap::IpEndpointName& from) override {
+            try {
+                osctap::OscPacketListener::ProcessPacket(data, size, from);
+            }
+            catch (const osctap::Exception& e) {
+                std::cerr << "[drop] malformed packet (" << e.what() << ")\n";
+            }
         }
-    }
 
-protected:
-    void ProcessMessage( const osctap::ReceivedMessage& m, const osctap::IpEndpointName& from ) override
-    {
-        char who[ osctap::IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH ];
-        from.AddressAndPortAsString( who );
-        std::cout << "[recv " << who << "] " << m.AddressPattern()
-                  << " (" << m.ArgumentCount() << " args)";
-        for( auto a = m.ArgumentsBegin(); a != m.ArgumentsEnd(); ++a ){
-            std::cout << ' ';
-            if( a->IsInt32() )        std::cout << a->AsInt32Unchecked();
-            else if( a->IsFloat() )   std::cout << a->AsFloatUnchecked();
-            else if( a->IsString() )  std::cout << '"' << a->AsStringUnchecked() << '"';
-            else if( a->IsBool() )    std::cout << (a->AsBoolUnchecked() ? "true" : "false");
-            else                      std::cout << '?';
+      protected:
+        void ProcessMessage(const osctap::ReceivedMessage& m, const osctap::IpEndpointName& from) override {
+            char who[osctap::IpEndpointName::ADDRESS_AND_PORT_STRING_LENGTH];
+            from.AddressAndPortAsString(who);
+            std::cout << "[recv " << who << "] " << m.AddressPattern() << " (" << m.ArgumentCount() << " args)";
+            for (auto a = m.ArgumentsBegin(); a != m.ArgumentsEnd(); ++a) {
+                std::cout << ' ';
+                if (a->IsInt32())
+                    std::cout << a->AsInt32Unchecked();
+                else if (a->IsFloat())
+                    std::cout << a->AsFloatUnchecked();
+                else if (a->IsString())
+                    std::cout << '"' << a->AsStringUnchecked() << '"';
+                else if (a->IsBool())
+                    std::cout << (a->AsBoolUnchecked() ? "true" : "false");
+                else
+                    std::cout << '?';
+            }
+            std::cout << '\n';
         }
-        std::cout << '\n';
-    }
-};
+    };
 
-osctap::TcpListeningReceiveSocket *gSocket = nullptr;
-void HandleSigInt( int ) { if( gSocket ) gSocket->AsynchronousBreak(); }
+    osctap::TcpListeningReceiveSocket* gSocket = nullptr;
+    void                               HandleSigInt(int) {
+        if (gSocket)
+            gSocket->AsynchronousBreak();
+    }
 
 } // namespace
 
-int main( int argc, char *argv[] )
-{
-    const int port = (argc > 1) ? std::atoi( argv[1] ) : 9000;
+int main(int argc, char* argv[]) {
+    const int port = (argc > 1) ? std::atoi(argv[1]) : 9000;
 
-    PrintingListener listener;
-    osctap::TcpListeningReceiveSocket socket(
-        osctap::IpEndpointName( osctap::IpEndpointName::ANY_ADDRESS, port ), &listener );
+    PrintingListener                  listener;
+    osctap::TcpListeningReceiveSocket socket(osctap::IpEndpointName(osctap::IpEndpointName::ANY_ADDRESS, port),
+                                             &listener);
     gSocket = &socket;
-    std::signal( SIGINT, HandleSigInt );
+    std::signal(SIGINT, HandleSigInt);
 
     std::cout << "OscTap TCP server listening on TCP " << port << " (Ctrl-C to stop)\n";
     socket.Run();
