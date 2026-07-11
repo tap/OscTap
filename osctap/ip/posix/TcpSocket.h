@@ -32,11 +32,12 @@
 #include <map>
 #include <vector>
 
-#include <netinet/tcp.h>              // TCP_NODELAY
-#include <osctap/ip/IpEndpointName.h> // complete type before the helpers below use it
-#include <osctap/ip/PacketListener.h>
-#include <osctap/ip/posix/UdpSocket.h>
-#include <osctap/osc/OscStreamFraming.h>
+#include <netinet/tcp.h> // TCP_NODELAY
+
+#include "ip/IpEndpointName.h" // complete type before the helpers below use it
+#include "ip/PacketListener.h"
+#include "ip/posix/UdpSocket.h"
+#include "osc/OscStreamFraming.h"
 
 namespace osctap {
     namespace posix {
