@@ -36,9 +36,13 @@
 */
 #include <osctap/ip/NetworkingUtils.h>
 
+// clang-format off
+// Winsock ordering is load-bearing: winsock2.h must precede windows.h.
+// Guarded so include-regroup can't alphabetize (windows.h < winsock2.h).
 #include <winsock2.h>   // this must come first to prevent errors with MSVC7
 #include <ws2tcpip.h>   // getaddrinfo / freeaddrinfo
 #include <windows.h>
+// clang-format on
 
 #include <cstring>
 

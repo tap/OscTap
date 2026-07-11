@@ -1,0 +1,26 @@
+name: Tap House Style
+
+# Enforces the Tap House Rules LAYOUT half only (.clang-format).
+#
+# OscTap is a drop-in source-compatible continuation of oscpack and is exempt
+# from the house NAMING rules (readability-identifier-naming) — renaming the
+# public API would break compatibility. See TapHouse STYLE.md "Repo exception —
+# OscTap". Because a naming-exempt repo cannot keep the three shared configs
+# byte-identical, this deliberately runs a format-only gate instead of calling
+# the shared tap/taphouse drift-check.yml.
+on: [push, pull_request]
+
+jobs:
+  clang-format:
+    name: clang-format (layout)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Pinned major version: formatting output can differ across releases.
+      - name: Install clang-format
+        run: sudo apt-get update -q && sudo apt-get install -y -q clang-format-18
+      - name: Check formatting (own sources)
+        run: |
+          files=$(find osctap oscpack tests demos examples fuzz android \
+            -type f \( -name '*.h' -o -name '*.cpp' -o -name '*.cc' -o -name '*.c' \))
+          clang-format-18 --dry-run --Werror $files
