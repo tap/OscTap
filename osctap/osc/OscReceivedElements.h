@@ -50,7 +50,7 @@
 #include <vector> // std::vector backs OwnedMessage (hosted-only)
 #endif
 
-namespace osctap {
+namespace tap::osc {
 
     class MalformedPacketException : public Exception {
       public:
@@ -155,7 +155,7 @@ namespace osctap {
         bool IsBundle() const { return (Size() > 0 && Contents()[0] == '#'); }
 
         osc_bundle_element_size_t Size() const { return ToInt32(sizePtr_); }
-        const char*               Contents() const { return sizePtr_ + osctap::OSC_SIZEOF_INT32; }
+        const char*               Contents() const { return sizePtr_ + tap::osc::OSC_SIZEOF_INT32; }
 
       private:
         const char* sizePtr_;
@@ -363,7 +363,7 @@ namespace osctap {
             // re-validating is safe. That makes this throw-free and realtime-safe -- the
             // non-throwing blob accessor for the RT read path.
             size = (osc_bundle_element_size_t)ToUInt32(argumentPtr_);
-            data = (const void*)(argumentPtr_ + osctap::OSC_SIZEOF_INT32);
+            data = (const void*)(argumentPtr_ + tap::osc::OSC_SIZEOF_INT32);
         }
 
         bool IsArrayBegin() const { return *typeTagPtr_ == ARRAY_BEGIN_TYPE_TAG; }
@@ -479,7 +479,7 @@ namespace osctap {
             case BLOB_TYPE_TAG: {
                 // treat blob size as an unsigned int for the purposes of this calculation
                 uint32_t blobSize   = ToUInt32(value_.argumentPtr_);
-                value_.argumentPtr_ = value_.argumentPtr_ + osctap::OSC_SIZEOF_INT32 + RoundUp4(blobSize);
+                value_.argumentPtr_ = value_.argumentPtr_ + tap::osc::OSC_SIZEOF_INT32 + RoundUp4(blobSize);
             } break;
 
             case ARRAY_BEGIN_TYPE_TAG:
@@ -755,7 +755,7 @@ namespace osctap {
                             break;
 
                         case BLOB_TYPE_TAG: {
-                            if (argument + osctap::OSC_SIZEOF_INT32 > end)
+                            if (argument + tap::osc::OSC_SIZEOF_INT32 > end)
                                 return "arguments exceed message size";
 
                             // treat blob size as an unsigned int for the purposes of this calculation
@@ -767,7 +767,7 @@ namespace osctap {
                             // blobSize must not be allowed to overflow the pointer (or RoundUp4)
                             // and thereby slip past the bounds check. blobData <= end is
                             // guaranteed by the check above.
-                            const char* blobData = argument + osctap::OSC_SIZEOF_INT32;
+                            const char* blobData = argument + tap::osc::OSC_SIZEOF_INT32;
                             if (RoundUp4(blobSize) > (uint32_t)(end - blobData))
                                 return "arguments exceed message size";
 
@@ -929,7 +929,7 @@ namespace osctap {
             const char* p = timeTag_ + 8;
 
             while (p < end_) {
-                if (p + osctap::OSC_SIZEOF_INT32 > end_)
+                if (p + tap::osc::OSC_SIZEOF_INT32 > end_)
                     return "packet too short for elementSize";
 
                 // treat element size as an unsigned int for the purposes of this calculation
@@ -939,7 +939,7 @@ namespace osctap {
 
                 // Compare sizes rather than advancing the pointer first, so that a huge
                 // elementSize can't overflow the pointer and slip past the bounds check.
-                const char* elementData = p + osctap::OSC_SIZEOF_INT32;
+                const char* elementData = p + tap::osc::OSC_SIZEOF_INT32;
                 if (elementSize > (uint32_t)(end_ - elementData))
                     return "packet too short for bundle element";
 
@@ -998,11 +998,11 @@ namespace osctap {
         uint32_t    elementCount_;
     };
 
-    inline auto begin(const osctap::ReceivedMessage& mes) {
+    inline auto begin(const tap::osc::ReceivedMessage& mes) {
         return mes.ArgumentsBegin();
     }
 
-    inline auto end(const osctap::ReceivedMessage& mes) {
+    inline auto end(const tap::osc::ReceivedMessage& mes) {
         return mes.ArgumentsEnd();
     }
 
@@ -1015,8 +1015,8 @@ namespace osctap {
     // freestanding build, where a malformed packet would otherwise hit the fatal
     // handler (abort) during construction or iteration:
     //
-    //     if( osctap::TryValidatePacket(buf, n) == nullptr ) {
-    //         osctap::ReceivedPacket p(buf, n);          // won't abort
+    //     if( tap::osc::TryValidatePacket(buf, n) == nullptr ) {
+    //         tap::osc::ReceivedPacket p(buf, n);          // won't abort
     //         ... read the message / iterate the bundle ...
     //     } else {
     //         ... drop the datagram ...
@@ -1041,7 +1041,7 @@ namespace osctap {
             while (p < end) {
                 // Framing was validated above: elementSize is multiple-of-4 and in bounds.
                 uint32_t    elementSize = ToUInt32(p);
-                const char* elementData = p + osctap::OSC_SIZEOF_INT32;
+                const char* elementData = p + tap::osc::OSC_SIZEOF_INT32;
                 if (const char* err = TryValidatePacket(elementData, (osc_bundle_element_size_t)elementSize,
                                                         maxBundleNestingDepth - 1))
                     return err;
@@ -1054,10 +1054,11 @@ namespace osctap {
         return ReceivedMessage::Validate(data, size);
     }
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_OSCRECEIVEDELEMENTS_H */

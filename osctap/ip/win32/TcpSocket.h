@@ -39,7 +39,7 @@
 #include "ip/win32/UdpSocket.h"
 #include "osc/OscStreamFraming.h"
 
-namespace osctap {
+namespace tap::osc {
     namespace win32 {
 
         // Mirrors ip/posix/TcpSocket.h on Winsock. The connection-aware server uses
@@ -303,6 +303,6 @@ namespace osctap {
         };
 
     } // namespace win32
-} // namespace osctap
+} // namespace tap::osc
 
 #endif /* INCLUDED_OSCTAP_WIN32_TCPSOCKET_H */

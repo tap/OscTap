@@ -42,19 +42,19 @@
 
 #include "OscPacketListener.h"
 
-namespace osctap {
+namespace tap::osc {
 
     template <class T>
     class MessageMappingOscPacketListener : public OscPacketListener {
       public:
-        typedef void (T::*function_type)(const osctap::ReceivedMessage&, const IpEndpointName&);
+        typedef void (T::*function_type)(const tap::osc::ReceivedMessage&, const IpEndpointName&);
 
       protected:
         void RegisterMessageFunction(const char* addressPattern, function_type f) {
             functions_.insert(std::make_pair(addressPattern, f));
         }
 
-        virtual void ProcessMessage(const osctap::ReceivedMessage& m, const IpEndpointName& remoteEndpoint) {
+        virtual void ProcessMessage(const tap::osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint) {
             typename function_map_type::iterator i = functions_.find(m.AddressPattern());
             if (i != functions_.end())
                 (dynamic_cast<T*>(this)->*(i->second))(m, remoteEndpoint);
@@ -69,10 +69,11 @@ namespace osctap {
         function_map_type                                          functions_;
     };
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_MESSAGEMAPPINGOSCPACKETLISTENER_H */

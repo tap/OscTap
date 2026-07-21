@@ -40,7 +40,7 @@
 #include "../ip/PacketListener.h"
 #include "OscReceivedElements.h"
 
-namespace osctap {
+namespace tap::osc {
 
     class OscPacketListener : public PacketListener {
       public:
@@ -55,7 +55,7 @@ namespace osctap {
         unsigned int MaxBundleNestingDepth() const { return maxBundleNestingDepth_; }
 
       protected:
-        virtual void ProcessBundle(const osctap::ReceivedBundle& b, const IpEndpointName& remoteEndpoint) {
+        virtual void ProcessBundle(const tap::osc::ReceivedBundle& b, const IpEndpointName& remoteEndpoint) {
             // ignore bundle time tag for now
 
             // Bound recursion depth so a deeply-nested bundle from an untrusted
@@ -81,11 +81,11 @@ namespace osctap {
             }
         }
 
-        virtual void ProcessMessage(const osctap::ReceivedMessage& m, const IpEndpointName& remoteEndpoint) = 0;
+        virtual void ProcessMessage(const tap::osc::ReceivedMessage& m, const IpEndpointName& remoteEndpoint) = 0;
 
       public:
         void ProcessPacket(const char* data, int size, const IpEndpointName& remoteEndpoint) override {
-            osctap::ReceivedPacket p(data, size);
+            tap::osc::ReceivedPacket p(data, size);
             if (p.IsBundle())
                 ProcessBundle(ReceivedBundle(p), remoteEndpoint);
             else
@@ -97,10 +97,11 @@ namespace osctap {
         unsigned int maxBundleNestingDepth_ = DEFAULT_MAX_BUNDLE_NESTING_DEPTH;
     };
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_OSCPACKETLISTENER_H */

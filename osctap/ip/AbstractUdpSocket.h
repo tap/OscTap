@@ -42,7 +42,7 @@
 #include "IpEndpointName.h"
 #include "NetworkingUtils.h"
 
-namespace osctap {
+namespace tap::osc {
     class PacketListener;
     class TimerListener;
 
@@ -192,10 +192,11 @@ namespace osctap {
 
     } // namespace detail
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_UDPSOCKET_H */

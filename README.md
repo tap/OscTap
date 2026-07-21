@@ -7,9 +7,9 @@
 packing and unpacking [Open Sound Control](https://opensoundcontrol.stanford.edu/)
 (OSC) packets, with UDP **and TCP** networking classes for Windows and POSIX.
 
-It is a drop-in successor: the `oscpack` namespace and include paths are retained as a
-deprecated compatibility alias, so existing code keeps building while new code uses the
-`osctap` name.
+It is a drop-in successor: the canonical namespace is `tap::osc`, and the former names
+(`osctap`, and `oscpack` before it) plus the original include paths are retained as
+compatibility aliases, so existing code keeps building while new code uses `tap::osc`.
 
 > **Status:** actively modernized. The parsing path is audited, hardened, and fuzzed;
 > a non-throwing validation gate, a freestanding/embedded profile, OSC-over-TCP, and an

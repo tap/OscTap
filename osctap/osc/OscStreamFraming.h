@@ -51,7 +51,7 @@
   SLIP framing (the OSC 1.1 nominated alternative) is intentionally deferred.
 */
 
-namespace osctap {
+namespace tap::osc {
 
     enum { OSC_STREAM_FRAME_HEADER_SIZE = 4 };
 
@@ -175,10 +175,11 @@ namespace osctap {
         bool              haveHeader_; // false: reading header; true: reading payload
     };
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_OSCSTREAMFRAMING_H */

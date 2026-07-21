@@ -47,7 +47,7 @@
 #endif
 #include <string_view>
 
-namespace osctap {
+namespace tap::osc {
     using string_view = std::string_view;
 }
 
@@ -64,7 +64,7 @@ namespace osctap {
 #include <stdlib.h> // alloca on OSX and FreeBSD (and Linux?)
 #endif
 
-namespace osctap {
+namespace tap::osc {
 
     class OutOfBufferMemoryException : public Exception {
       public:
@@ -91,10 +91,10 @@ namespace osctap {
     };
 
     struct BeginMessageN {
-        explicit BeginMessageN(osctap::string_view str)
+        explicit BeginMessageN(tap::osc::string_view str)
             : addressPattern{str} {}
 
-        osctap::string_view addressPattern;
+        tap::osc::string_view addressPattern;
     };
 
     class OutboundPacketStream {
@@ -390,7 +390,7 @@ namespace osctap {
             return *this;
         }
 
-        OutboundPacketStream& operator<<(osctap::string_view rhs) {
+        OutboundPacketStream& operator<<(tap::osc::string_view rhs) {
             CheckForAvailableArgumentSpace(RoundUp4(static_cast<uint32_t>(rhs.size() + 1)));
 
             *(--typeTagsCurrent_) = STRING_TYPE_TAG;
@@ -417,16 +417,16 @@ namespace osctap {
         // overload below; this catches decayed/runtime pointers.) Freestanding-safe:
         // forwards to the string_view overload, no heap.
         OutboundPacketStream& operator<<(const char* rhs) {
-            operator<<(osctap::string_view(rhs));
+            operator<<(tap::osc::string_view(rhs));
             return *this;
         }
 
 #ifndef OSCTAP_FREESTANDING
         // Hosted convenience: std::string pulls in <string> (and heap). The
         // freestanding profile omits it; pass const char*, a char array, or
-        // osctap::string_view instead.
+        // tap::osc::string_view instead.
         OutboundPacketStream& operator<<(const std::string& rhs) {
-            operator<<(osctap::string_view(rhs));
+            operator<<(tap::osc::string_view(rhs));
             return *this;
         }
 #endif
@@ -592,10 +592,11 @@ namespace osctap {
         bool messageIsInProgress_;
     };
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_OSCOUTBOUNDPACKETSTREAM_H */
