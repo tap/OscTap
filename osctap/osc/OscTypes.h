@@ -57,7 +57,7 @@
 #define OSCTAP_REALTIME
 #endif
 
-namespace osctap {
+namespace tap::osc {
 
     enum ValueTypeSizes { OSC_SIZEOF_INT32 = 4, OSC_SIZEOF_UINT32 = 4, OSC_SIZEOF_INT64 = 8, OSC_SIZEOF_UINT64 = 8 };
 
@@ -204,10 +204,11 @@ namespace osctap {
         return {};
     }
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_OSCTYPES_H */

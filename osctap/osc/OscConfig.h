@@ -90,7 +90,7 @@
 #define OSCTAP_THROW(EXC) (OSCTAP_FATAL_HANDLER((EXC).what()))
 #else
 #include <cstdlib> // std::abort
-namespace osctap {
+namespace tap::osc {
     namespace detail {
         // Default fatal handler used when exceptions are disabled and the integrator
         // has not supplied OSCTAP_FATAL_HANDLER. Marked [[noreturn]] so the compiler
@@ -100,8 +100,8 @@ namespace osctap {
             std::abort();
         }
     } // namespace detail
-} // namespace osctap
-#define OSCTAP_THROW(EXC) (::osctap::detail::OscFatalError((EXC).what()))
+} // namespace tap::osc
+#define OSCTAP_THROW(EXC) (::tap::osc::detail::OscFatalError((EXC).what()))
 #endif
 #endif
 

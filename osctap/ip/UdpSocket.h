@@ -8,20 +8,21 @@
 #include "posix/UdpSocket.h"
 #endif
 
-namespace osctap {
+namespace tap::osc {
     namespace detail {
 #if defined(_WIN32)
-        using Implementation = osctap::win32::Implementation;
+        using Implementation = tap::osc::win32::Implementation;
 #else
-        using Implementation = osctap::posix::Implementation;
+        using Implementation = tap::osc::posix::Implementation;
 #endif
     } // namespace detail
 
     using UdpTransmitSocket         = detail::UdpTransmitSocket<detail::Implementation>;
     using UdpReceiveSocket          = detail::UdpReceiveSocket<detail::Implementation>;
     using UdpListeningReceiveSocket = detail::UdpListeningReceiveSocket<detail::Implementation>;
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;

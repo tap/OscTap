@@ -39,7 +39,7 @@
 
 #include <exception>
 
-namespace osctap {
+namespace tap::osc {
 
     class Exception : public std::exception {
         const char* what_;
@@ -59,10 +59,11 @@ namespace osctap {
         const char* what() const noexcept override { return what_; }
     };
 
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_OSCEXCEPTION_H */

@@ -41,9 +41,9 @@
 
 #include "NetworkingUtils.h"
 
-namespace osctap {
+namespace tap::osc {
     class IpEndpointName {
-        static unsigned long GetHostByName(const char* s) { return osctap::GetHostByName(s); }
+        static unsigned long GetHostByName(const char* s) { return tap::osc::GetHostByName(s); }
 
       public:
         static const unsigned long ANY_ADDRESS = 0xFFFFFFFF;
@@ -114,10 +114,11 @@ namespace osctap {
     inline bool operator!=(const IpEndpointName& lhs, const IpEndpointName& rhs) {
         return !(lhs == rhs);
     }
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_IPENDPOINTNAME_H */

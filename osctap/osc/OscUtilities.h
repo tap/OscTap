@@ -17,7 +17,7 @@
 #define OSCTAP_BITCAST_CONSTEXPR inline
 #endif
 
-namespace osctap {
+namespace tap::osc {
 
     // Reinterpret the bits of one trivially-copyable type as another of the same
     // size, without the undefined behaviour of union type-punning or pointer casts.
@@ -135,8 +135,9 @@ namespace osctap {
     constexpr uint64_t ToUInt64(const char* p) noexcept {
         return LoadBigEndian64(p);
     }
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;

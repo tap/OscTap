@@ -37,16 +37,17 @@
 #ifndef INCLUDED_OSCTAP_TIMERLISTENER_H
 #define INCLUDED_OSCTAP_TIMERLISTENER_H
 
-namespace osctap {
+namespace tap::osc {
     class TimerListener {
       public:
         virtual ~TimerListener() {}
         virtual void TimerExpired() = 0;
     };
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_TIMERLISTENER_H */

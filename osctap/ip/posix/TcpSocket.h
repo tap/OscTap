@@ -39,7 +39,7 @@
 #include "ip/posix/UdpSocket.h"
 #include "osc/OscStreamFraming.h"
 
-namespace osctap {
+namespace tap::osc {
     namespace posix {
 
         // ---------------------------------------------------------------------------
@@ -296,6 +296,6 @@ namespace osctap {
         };
 
     } // namespace posix
-} // namespace osctap
+} // namespace tap::osc
 
 #endif /* INCLUDED_OSCTAP_POSIX_TCPSOCKET_H */

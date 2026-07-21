@@ -19,7 +19,7 @@
 #include "posix/TcpSocket.h"
 #endif
 
-namespace osctap {
+namespace tap::osc {
 #if defined(_WIN32)
     using TcpTransmitSocket         = win32::TcpTransmitSocket;
     using TcpListeningReceiveSocket = win32::TcpListeningReceiveSocket;
@@ -27,9 +27,11 @@ namespace osctap {
     using TcpTransmitSocket         = posix::TcpTransmitSocket;
     using TcpListeningReceiveSocket = posix::TcpListeningReceiveSocket;
 #endif
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
 
 #endif /* INCLUDED_OSCTAP_TCPSOCKET_H */

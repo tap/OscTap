@@ -63,7 +63,7 @@
 
 typedef int socklen_t;
 
-namespace osctap {
+namespace tap::osc {
     namespace win32 {
         static void SockaddrFromIpEndpointName(struct sockaddr_in& sockAddr, const IpEndpointName& endpoint) {
             std::memset((char*)&sockAddr, 0, sizeof(sockAddr));
@@ -438,12 +438,13 @@ namespace osctap {
         };
 
         struct Implementation {
-            using udp_socket_t         = osctap::win32::UdpSocketImplementation;
-            using socket_multiplexer_t = osctap::win32::SocketReceiveMultiplexerImplementation<udp_socket_t>;
+            using udp_socket_t         = tap::osc::win32::UdpSocketImplementation;
+            using socket_multiplexer_t = tap::osc::win32::SocketReceiveMultiplexerImplementation<udp_socket_t>;
         };
     } // namespace win32
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;

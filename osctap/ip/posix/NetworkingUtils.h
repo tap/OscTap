@@ -5,7 +5,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-namespace osctap {
+namespace tap::osc {
     // in general NetworkInitializer is only used internally, but if you're
     // application creates multiple sockets from different threads at runtime you
     // should instantiate one of these in main just to make sure the networking
@@ -42,8 +42,9 @@ namespace osctap {
         }
         return result;
     }
-} // namespace osctap
+} // namespace tap::osc
 
-// Backwards-compatibility alias: this library was formerly named oscpack.
-// Existing code that uses the oscpack:: namespace continues to compile.
-namespace oscpack = osctap;
+// Backwards-compatibility aliases: the canonical namespace is tap::osc.
+// The former names (osctap, and oscpack before it) keep compiling.
+namespace osctap  = tap::osc;
+namespace oscpack = tap::osc;
