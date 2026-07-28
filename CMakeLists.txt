@@ -23,6 +23,13 @@ else()
 endif()
 
 add_library(oscpack INTERFACE)
+# The family-wide alias, per the namespace convention in taphouse's README: one
+# `tap::<library>` sub-namespace per repo, and the CMake alias matches it. The
+# C++ side already provides `tap::osc`; this is the CMake half. The unprefixed
+# `oscpack` target name stays so existing consumers keep working, matching the
+# repo's own <oscpack/...>-include compatibility shim; prefer `tap::osc` in new
+# code.
+add_library(tap::osc ALIAS oscpack)
 
 # Public headers now live under osctap/ (prefix <osctap/...>); the top-level
 # oscpack/ tree is a thin redirect shim kept for <oscpack/...> compatibility.
