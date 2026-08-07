@@ -33,11 +33,10 @@ add_library(tap::osc ALIAS oscpack)
 
 # Public headers now live under osctap/ (prefix <osctap/...>); the top-level
 # oscpack/ tree is a thin redirect shim kept for <oscpack/...> compatibility.
-# Adding osctap/ to the search path lets the in-tree quoted "osc/..."/"ip/..."
-# includes resolve, while the repo root (added to the INTERFACE below) keeps
-# both <osctap/...> and the deprecated <oscpack/...> prefixes working.
-include_directories(osctap)
-
+# Every include — in the headers themselves and in the in-tree consumers — is
+# written with the full "osctap/..." prefix, so the repo root on the INTERFACE
+# below is the only search path needed; it also keeps the deprecated
+# <oscpack/...> prefix working.
 target_include_directories(oscpack INTERFACE .)
 if(WIN32)
   target_link_libraries(oscpack INTERFACE ws2_32 winmm)

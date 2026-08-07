@@ -95,8 +95,8 @@ header-only, so there is no library to compile or link.
 # After pico_sdk_init() and your add_executable(osc_demo ...)
 
 target_include_directories(osc_demo PRIVATE
-    ${OSCTAP_DIR})                 # repo root: enables <osctap/osc/...> and the
-                                   # in-tree quoted "osc/..." includes
+    ${OSCTAP_DIR})                 # repo root: all includes use the
+                                   # osctap/... prefix
 
 target_compile_definitions(osc_demo PRIVATE
     OSCTAP_FREESTANDING)           # drop hosted-only facilities
@@ -128,7 +128,7 @@ dispatch there (off the realtime thread), then read with the throw-free
 accessors in your hot loop. *Illustrative — adapt names to your SDK version:*
 
 ```cpp
-#include "osc/OscReceivedElements.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 static void on_osc_packet(void* /*arg*/, struct udp_pcb* /*pcb*/,
                           struct pbuf* p, const ip_addr_t* /*addr*/, u16_t /*port*/)
@@ -164,7 +164,7 @@ static void on_osc_packet(void* /*arg*/, struct udp_pcb* /*pcb*/,
 Serialize into a stack buffer (no heap), then ship it through an lwIP `pbuf`:
 
 ```cpp
-#include "osc/OscOutboundPacketStream.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
 
 void send_fader(udp_pcb* pcb, const ip_addr_t* dst, uint16_t port, float v)
 {

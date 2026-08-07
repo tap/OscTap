@@ -17,9 +17,9 @@
 #include <cstdlib>
 #include <iostream>
 
-#include "ip/IpEndpointName.h"
-#include "ip/TcpSocket.h"
-#include "osc/OscPacketListener.h"
+#include "osctap/ip/IpEndpointName.h"
+#include "osctap/ip/TcpSocket.h"
+#include "osctap/osc/OscPacketListener.h"
 
 namespace {
 

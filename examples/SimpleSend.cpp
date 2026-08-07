@@ -6,8 +6,8 @@
     For a typed command-line sender see demos/osc_send.cpp.
 */
 
-#include "ip/UdpSocket.h"
-#include "osc/OscOutboundPacketStream.h"
+#include "osctap/ip/UdpSocket.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
 
 using namespace oscpack; // OscTap's deprecated oscpack:: alias, exercised here
 

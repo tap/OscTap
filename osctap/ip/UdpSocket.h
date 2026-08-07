@@ -1,11 +1,11 @@
 #pragma once
-#include "AbstractUdpSocket.h"
-#include "ip/NetworkingUtils.h"
+#include "osctap/ip/AbstractUdpSocket.h"
+#include "osctap/ip/NetworkingUtils.h"
 
 #if defined(_WIN32)
-#include "win32/UdpSocket.h"
+#include "osctap/ip/win32/UdpSocket.h"
 #else
-#include "posix/UdpSocket.h"
+#include "osctap/ip/posix/UdpSocket.h"
 #endif
 
 namespace tap::osc {

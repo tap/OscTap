@@ -39,7 +39,7 @@
 
 #include <cstdio>
 
-#include "NetworkingUtils.h"
+#include "osctap/ip/NetworkingUtils.h"
 
 namespace tap::osc {
     class IpEndpointName {

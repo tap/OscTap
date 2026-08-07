@@ -16,11 +16,11 @@
 
 #include <cstdio>
 
-#include "ip/IpEndpointName.h"
-#include "ip/PacketListener.h"
-#include "ip/TcpSocket.h"
-#include "ip/UdpSocket.h"
-#include "osc/OscOutboundPacketStream.h"
+#include "osctap/ip/IpEndpointName.h"
+#include "osctap/ip/PacketListener.h"
+#include "osctap/ip/TcpSocket.h"
+#include "osctap/ip/UdpSocket.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
 
 namespace {
 

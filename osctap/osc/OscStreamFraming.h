@@ -31,7 +31,7 @@
 #include <cstring> // memcpy
 #include <vector>
 
-#include "OscUtilities.h" // FromUInt32 / ToUInt32
+#include "osctap/osc/OscUtilities.h" // FromUInt32 / ToUInt32
 
 /*
   Length-prefixed OSC stream framing -- the de-facto convention for OSC over a

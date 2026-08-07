@@ -24,7 +24,7 @@ target_link_libraries(myapp PRIVATE oscpack)   # header-only INTERFACE target
 Or just point at the headers:
 
 ```sh
-g++ -std=c++17 -I path/to/OscTap -I path/to/OscTap/osctap myapp.cpp -o myapp
+g++ -std=c++17 -I path/to/OscTap myapp.cpp -o myapp
 ```
 
 Public headers live under `<osctap/...>`; the old `<oscpack/...>` paths and the
@@ -37,8 +37,8 @@ Serialize into a buffer **you** own (no heap allocation), then put the bytes on
 the wire. The buffer can be on the stack.
 
 ```cpp
-#include "osc/OscOutboundPacketStream.h"
-#include "ip/UdpSocket.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
+#include "osctap/ip/UdpSocket.h"
 
 int main()
 {
@@ -66,8 +66,8 @@ Subclass `OscPacketListener` (it unpacks bundles for you and bounds nesting
 depth), bind a socket, and run the receive loop.
 
 ```cpp
-#include "osc/OscPacketListener.h"
-#include "ip/UdpSocket.h"
+#include "osctap/osc/OscPacketListener.h"
+#include "osctap/ip/UdpSocket.h"
 #include <cstring>
 #include <iostream>
 

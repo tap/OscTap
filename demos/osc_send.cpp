@@ -28,9 +28,9 @@
 #include <cstring>
 #include <iostream>
 
-#include "ip/IpEndpointName.h"
-#include "ip/UdpSocket.h"
-#include "osc/OscOutboundPacketStream.h"
+#include "osctap/ip/IpEndpointName.h"
+#include "osctap/ip/UdpSocket.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
 
 namespace {
 

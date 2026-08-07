@@ -22,8 +22,8 @@
 #include <exception>
 #include <vector>
 
-#include "osc/OscReceivedElements.h"
-#include "osc/OscStreamFraming.h"
+#include "osctap/osc/OscReceivedElements.h"
+#include "osctap/osc/OscStreamFraming.h"
 
 using namespace oscpack;
 

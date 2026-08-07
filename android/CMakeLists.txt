@@ -19,7 +19,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(OSCTAP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE PATH "Path to the OscTap repo root")
 
 add_library(osctap_jni SHARED osctap_jni.cpp)
-target_include_directories(osctap_jni PRIVATE ${OSCTAP_ROOT} ${OSCTAP_ROOT}/osctap)
+target_include_directories(osctap_jni PRIVATE ${OSCTAP_ROOT})
 
 # Parsing untrusted OSC throws on malformed input; keep exceptions enabled so the
 # bridge can catch and surface a Java exception instead of aborting. (RTTI is not
