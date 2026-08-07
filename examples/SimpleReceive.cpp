@@ -11,9 +11,9 @@
 #include <cstring>
 #include <iostream>
 
-#include "ip/UdpSocket.h"
-#include "osc/OscPacketListener.h"
-#include "osc/OscReceivedElements.h"
+#include "osctap/ip/UdpSocket.h"
+#include "osctap/osc/OscPacketListener.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 using namespace oscpack; // OscTap's deprecated oscpack:: alias, exercised here
 

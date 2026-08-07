@@ -24,8 +24,8 @@
 
 #include <jni.h>
 
-#include "osc/OscOutboundPacketStream.h"
-#include "osc/OscReceivedElements.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 namespace {
 

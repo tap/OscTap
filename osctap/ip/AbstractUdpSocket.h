@@ -39,8 +39,8 @@
 
 #include <cstring> // size_t
 
-#include "IpEndpointName.h"
-#include "NetworkingUtils.h"
+#include "osctap/ip/IpEndpointName.h"
+#include "osctap/ip/NetworkingUtils.h"
 
 namespace tap::osc {
     class PacketListener;

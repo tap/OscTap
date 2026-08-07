@@ -51,11 +51,11 @@ namespace tap::osc {
     using string_view = std::string_view;
 }
 
-#include "OscConfig.h" // OSCTAP_THROW, OSCTAP_FREESTANDING
-#include "OscException.h"
-#include "OscHostEndianness.h"
-#include "OscTypes.h"
-#include "OscUtilities.h"
+#include "osctap/osc/OscConfig.h" // OSCTAP_THROW, OSCTAP_FREESTANDING
+#include "osctap/osc/OscException.h"
+#include "osctap/osc/OscHostEndianness.h"
+#include "osctap/osc/OscTypes.h"
+#include "osctap/osc/OscUtilities.h"
 
 #if defined(__WIN32__) || defined(WIN32) || defined(_WIN32)
 #include <malloc.h> // for alloca

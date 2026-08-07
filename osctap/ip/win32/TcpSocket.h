@@ -34,10 +34,10 @@
 
 #include <ws2tcpip.h> // TCP_NODELAY, IPPROTO_TCP
 
-#include "ip/IpEndpointName.h" // complete type before the helpers below use it
-#include "ip/PacketListener.h"
-#include "ip/win32/UdpSocket.h"
-#include "osc/OscStreamFraming.h"
+#include "osctap/ip/IpEndpointName.h" // complete type before the helpers below use it
+#include "osctap/ip/PacketListener.h"
+#include "osctap/ip/win32/UdpSocket.h"
+#include "osctap/osc/OscStreamFraming.h"
 
 namespace tap::osc {
     namespace win32 {

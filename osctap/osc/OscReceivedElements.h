@@ -42,10 +42,10 @@
 #include <cstddef> // ptrdiff_t
 #include <cstring> // size_t
 
-#include "OscConfig.h" // OSCTAP_THROW, OSCTAP_FREESTANDING
-#include "OscException.h"
-#include "OscTypes.h"
-#include "OscUtilities.h"
+#include "osctap/osc/OscConfig.h" // OSCTAP_THROW, OSCTAP_FREESTANDING
+#include "osctap/osc/OscException.h"
+#include "osctap/osc/OscTypes.h"
+#include "osctap/osc/OscUtilities.h"
 #ifndef OSCTAP_FREESTANDING
 #include <vector> // std::vector backs OwnedMessage (hosted-only)
 #endif

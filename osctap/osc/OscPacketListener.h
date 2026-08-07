@@ -37,8 +37,8 @@
 #ifndef INCLUDED_OSCTAP_OSCPACKETLISTENER_H
 #define INCLUDED_OSCTAP_OSCPACKETLISTENER_H
 
-#include "../ip/PacketListener.h"
-#include "OscReceivedElements.h"
+#include "osctap/ip/PacketListener.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 namespace tap::osc {
 

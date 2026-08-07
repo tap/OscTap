@@ -22,9 +22,9 @@
 #include <iostream>
 #include <thread>
 
-#include "ip/IpEndpointName.h"
-#include "ip/PacketListener.h"
-#include "ip/UdpSocket.h"
+#include "osctap/ip/IpEndpointName.h"
+#include "osctap/ip/PacketListener.h"
+#include "osctap/ip/UdpSocket.h"
 
 using namespace osctap;
 

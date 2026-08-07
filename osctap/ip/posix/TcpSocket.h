@@ -34,10 +34,10 @@
 
 #include <netinet/tcp.h> // TCP_NODELAY
 
-#include "ip/IpEndpointName.h" // complete type before the helpers below use it
-#include "ip/PacketListener.h"
-#include "ip/posix/UdpSocket.h"
-#include "osc/OscStreamFraming.h"
+#include "osctap/ip/IpEndpointName.h" // complete type before the helpers below use it
+#include "osctap/ip/PacketListener.h"
+#include "osctap/ip/posix/UdpSocket.h"
+#include "osctap/osc/OscStreamFraming.h"
 
 namespace tap::osc {
     namespace posix {

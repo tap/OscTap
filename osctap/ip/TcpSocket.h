@@ -14,9 +14,9 @@
 // server, TCP_NODELAY, frame-size cap. SLIP/TLS/WebSocket/epoll are deferred.
 
 #if defined(_WIN32)
-#include "win32/TcpSocket.h"
+#include "osctap/ip/win32/TcpSocket.h"
 #else
-#include "posix/TcpSocket.h"
+#include "osctap/ip/posix/TcpSocket.h"
 #endif
 
 namespace tap::osc {

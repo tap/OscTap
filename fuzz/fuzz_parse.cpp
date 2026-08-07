@@ -21,8 +21,8 @@
 #include <sstream>
 #include <vector>
 
-#include "osc/OscPrintReceivedElements.h"
-#include "osc/OscReceivedElements.h"
+#include "osctap/osc/OscPrintReceivedElements.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 using namespace oscpack;
 

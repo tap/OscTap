@@ -42,11 +42,11 @@
 #include <iostream>
 #include <vector>
 
-#include "ip/IpEndpointName.h"
-#include "osc/OscOutboundPacketStream.h"
-#include "osc/OscPacketListener.h"
-#include "osc/OscPrintReceivedElements.h"
-#include "osc/OscReceivedElements.h"
+#include "osctap/ip/IpEndpointName.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
+#include "osctap/osc/OscPacketListener.h"
+#include "osctap/osc/OscPrintReceivedElements.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 // Compile-time proof that the big-endian integer load path is constexpr
 // ("constexpr parsing"). Uses the oscpack:: alias deliberately (it must keep

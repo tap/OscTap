@@ -17,8 +17,8 @@
 #include <cstdio>
 #include <cstring>
 
-#include "osc/OscOutboundPacketStream.h"
-#include "osc/OscReceivedElements.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 // Guard rails: this TU must be compiled as the freestanding profile.
 #if OSCTAP_HAS_EXCEPTIONS

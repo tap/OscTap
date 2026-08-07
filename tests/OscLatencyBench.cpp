@@ -21,8 +21,8 @@
 #include <cstdlib>
 #include <vector>
 
-#include "osc/OscOutboundPacketStream.h"
-#include "osc/OscReceivedElements.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 using namespace oscpack;
 

@@ -17,10 +17,10 @@
 #include <thread>
 #include <vector>
 
-#include "ip/IpEndpointName.h"
-#include "ip/TcpSocket.h"
-#include "osc/OscOutboundPacketStream.h"
-#include "osc/OscPacketListener.h"
+#include "osctap/ip/IpEndpointName.h"
+#include "osctap/ip/TcpSocket.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
+#include "osctap/osc/OscPacketListener.h"
 
 namespace {
 

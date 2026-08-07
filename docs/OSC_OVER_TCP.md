@@ -23,7 +23,7 @@ transport-agnostic and usable on its own (e.g. over a serial link or your own
 socket loop):
 
 ```cpp
-#include "osc/OscStreamFraming.h"
+#include "osctap/osc/OscStreamFraming.h"
 
 // Decode: feed received bytes in whatever chunks arrive; the deframer reassembles
 // complete packets and calls your sink once per packet.
@@ -43,8 +43,8 @@ UDP `UdpListeningReceiveSocket` — the listener contract is identical, so exist
 listeners work unchanged.
 
 ```cpp
-#include "ip/TcpSocket.h"
-#include "osc/OscPacketListener.h"
+#include "osctap/ip/TcpSocket.h"
+#include "osctap/osc/OscPacketListener.h"
 
 class MyListener : public osctap::OscPacketListener {
 protected:
@@ -71,8 +71,8 @@ partial writes; `TCP_NODELAY` is on (Nagle off — without it OSC-over-TCP laten
 is a classic footgun).
 
 ```cpp
-#include "ip/TcpSocket.h"
-#include "osc/OscOutboundPacketStream.h"
+#include "osctap/ip/TcpSocket.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
 
 osctap::TcpTransmitSocket client( osctap::IpEndpointName( "127.0.0.1", 9000 ) );
 

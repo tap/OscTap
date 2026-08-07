@@ -11,7 +11,7 @@ so out-of-bounds reads surface under AddressSanitizer.
 Requires Clang with the libFuzzer + sanitizer runtimes installed.
 
 ```sh
-clang++ -std=c++17 -g -O1 -I osctap \
+clang++ -std=c++17 -g -O1 -I . \
     -fsanitize=fuzzer,address,undefined \
     fuzz/fuzz_parse.cpp -o fuzz_parse
 ./fuzz_parse fuzz/corpus            # seed corpus bootstraps coverage
@@ -33,7 +33,7 @@ runs a bounded, deterministic random-mutation loop over them. Useful for CI
 smoke tests, crash-repro replay, and sanitizer coverage without libFuzzer.
 
 ```sh
-g++ -std=c++17 -g -O1 -I osctap -fsanitize=address,undefined \
+g++ -std=c++17 -g -O1 -I . -fsanitize=address,undefined \
     fuzz/fuzz_parse.cpp fuzz/standalone_main.cpp -o fuzz_parse_standalone
 ./fuzz_parse_standalone fuzz/corpus/*
 ```

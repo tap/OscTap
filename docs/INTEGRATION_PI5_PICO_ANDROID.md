@@ -102,7 +102,7 @@ contract, the Pico does two things.
 **Receive `/led` and `/pwm`** in the lwIP `udp_recv` callback:
 
 ```cpp
-#include "osc/OscReceivedElements.h"
+#include "osctap/osc/OscReceivedElements.h"
 
 static void on_osc(void*, udp_pcb*, pbuf* p, const ip_addr_t*, u16_t) {
     if (!p) return;
@@ -122,7 +122,7 @@ static void on_osc(void*, udp_pcb*, pbuf* p, const ip_addr_t*, u16_t) {
 (buffer on the stack, no heap):
 
 ```cpp
-#include "osc/OscOutboundPacketStream.h"
+#include "osctap/osc/OscOutboundPacketStream.h"
 
 void publish_temp(udp_pcb* pcb, const ip_addr_t* hub, uint16_t port, float c) {
     char buffer[64];

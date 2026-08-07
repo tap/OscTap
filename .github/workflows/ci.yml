@@ -196,7 +196,7 @@ jobs:
       - name: Cross-compile the socket loopback tests for win32
         run: |
           for t in OscUdpTest OscTcpTest OscMulticastTest; do
-            x86_64-w64-mingw32-g++ -std=c++17 -O1 -static -I . -I osctap \
+            x86_64-w64-mingw32-g++ -std=c++17 -O1 -static -I . \
               tests/$t.cpp -o $t.exe -lws2_32 -lwinmm
           done
 

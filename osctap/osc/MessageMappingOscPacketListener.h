@@ -40,7 +40,7 @@
 #include <cstring>
 #include <map>
 
-#include "OscPacketListener.h"
+#include "osctap/osc/OscPacketListener.h"
 
 namespace tap::osc {
 

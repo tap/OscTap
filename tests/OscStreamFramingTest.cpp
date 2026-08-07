@@ -8,7 +8,7 @@
     tested independently of any socket.
 */
 
-#include "osc/OscStreamFraming.h"
+#include "osctap/osc/OscStreamFraming.h"
 
 #include <cstdio>
 #include <cstring>
