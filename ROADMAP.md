@@ -128,9 +128,10 @@ rename is the first item of Phase 1, below.
       recorded by `tests/OscLatencyBench.cpp` — the secondary signal the strategy calls for,
       run (informationally) in the RTSan CI job.
 - [x] **TSan**: `tests/OscConcurrencyTest.cpp` runs `SocketReceiveMultiplexer::Run()` on
-      one thread and stops it via `AsynchronousBreak()` from another (signalling in a loop
-      so it can't race ahead of `Run()`'s break-flag reset), plus a best-effort loopback
-      packet so `ProcessPacket()` runs concurrently. A dedicated GCC TSan CI job
+      one thread and stops it via a single `AsynchronousBreak()` from another (race-free
+      since #30: `Run()` consumes the break flag on exit instead of resetting it on entry;
+      `tests/OscBreakBeforeRunTest.cpp` is the deterministic regression test), plus a
+      best-effort loopback packet so `ProcessPacket()` runs concurrently. A dedicated GCC TSan CI job
       (`-DOSCTAP_TSAN=ON`, `-fsanitize=thread`, `halt_on_error=1`) vets it; it also runs as
       a plain functional test on the POSIX matrix legs. TSan is clean, as expected — the
       value is the standing guard for the only real concurrency in the library.

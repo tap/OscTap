@@ -51,6 +51,7 @@
 #endif
 
 #include <algorithm>
+#include <atomic>
 #include <cassert>
 #include <chrono>  // steady_clock for GetCurrentTimeMs()
 #include <cstring> // for memset
@@ -280,8 +281,8 @@ namespace tap::osc {
             std::vector<std::pair<PacketListener*, UdpSocket_T*>> socketListeners_;
             std::vector<AttachedTimerListener>                    timerListeners_;
 
-            volatile bool break_;
-            HANDLE        breakEvent_;
+            std::atomic_bool break_{false}; // atomic (not volatile): written cross-thread by AsynchronousBreak()
+            HANDLE           breakEvent_;
 
             double GetCurrentTimeMs() const {
                 // std::chrono::steady_clock (matches the posix backend): monotonic and 64-bit,
@@ -336,7 +337,14 @@ namespace tap::osc {
             }
 
             void Run() {
-                break_ = false;
+                // Consume the stop request on exit rather than discarding it on entry, so a
+                // Break()/AsynchronousBreak() that lands before Run() starts is still honoured
+                // (otherwise the request is lost and Run() blocks forever -- see issue #30).
+                // A scope guard also clears the flag if Run() leaves by exception.
+                struct ClearBreakOnExit {
+                    std::atomic_bool& flag;
+                    ~ClearBreakOnExit() { flag = false; }
+                } clearBreakOnExit{break_};
 
                 // prepare the window events which we use to wake up on incoming data
                 // we use this instead of select() primarily to support the AsyncBreak()

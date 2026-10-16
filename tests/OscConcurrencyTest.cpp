@@ -47,11 +47,7 @@ int main() {
     const int                 port = receiver.LocalPort();
 
     // Run the receive loop on its own thread; it blocks in select().
-    std::atomic<bool> finished{false};
-    std::thread       runner([&] {
-        receiver.Run();
-        finished.store(true, std::memory_order_release);
-    });
+    std::thread runner([&] { receiver.Run(); });
 
     // Best-effort: send one packet so ProcessPacket() runs on the receive thread
     // concurrently with this one (exercises the receive path, not just the
@@ -80,14 +76,13 @@ int main() {
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    // Stop Run() from this thread. Run() resets its break flag when it starts, so
-    // a single AsynchronousBreak() could race ahead of that reset and be missed;
-    // signalling in a loop until the run thread returns is race-free and is
-    // guaranteed to terminate. Repeated breaks are harmless.
-    while (!finished.load(std::memory_order_acquire)) {
-        receiver.AsynchronousBreak();
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
+    // Stop Run() from this thread with a single AsynchronousBreak(). This is the
+    // documented shutdown and it is race-free: Run() consumes the break flag when
+    // it returns rather than clearing it on entry, so a break that lands before
+    // the run thread even reaches Run() is still honoured (issue #30; the
+    // deterministic check is OscBreakBeforeRunTest). It used to have to be
+    // signalled in a loop to paper over that lost-break race.
+    receiver.AsynchronousBreak();
 
     runner.join();
 

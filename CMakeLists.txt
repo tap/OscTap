@@ -77,6 +77,21 @@ if(OSCPACK_BUILD_EXAMPLES)
     add_test(NAME Win32SocketSmoke COMMAND Win32SocketSmoke)
   endif()
 
+  # Regression test for issue #30: a Break()/AsynchronousBreak() requested before
+  # Run() starts must make Run() return instead of being lost (which blocked the
+  # receive loop forever). Deterministic and single-threaded apart from a watchdog
+  # thread, and it only binds loopback sockets, so it runs on every platform --
+  # including the Windows legs, where it is the only runtime check of the win32
+  # receive loops' break handling.
+  find_package(Threads REQUIRED)
+  add_executable(OscBreakBeforeRunTest tests/OscBreakBeforeRunTest.cpp)
+  target_link_libraries(OscBreakBeforeRunTest oscpack Threads::Threads)
+  add_test(NAME OscBreakBeforeRunTest COMMAND OscBreakBeforeRunTest)
+  if(OSCTAP_TSAN)
+    target_compile_options(OscBreakBeforeRunTest PRIVATE -fsanitize=thread -g)
+    target_link_options(OscBreakBeforeRunTest PRIVATE -fsanitize=thread)
+  endif()
+
   # Realtime-safety test. Runs as a plain functional test of the read/dispatch
   # hot path everywhere (OSCTAP_REALTIME is a no-op off Clang>=20). With
   # -DOSCTAP_RTSAN=ON (Clang>=20) it additionally enforces the realtime contract:
@@ -102,7 +117,6 @@ if(OSCPACK_BUILD_EXAMPLES)
   # ThreadSanitizer (the basis for the dedicated TSan CI job). Uses real sockets
   # + std::thread, so it is gated to non-Windows for now.
   if(NOT WIN32)
-    find_package(Threads REQUIRED)
     add_executable(OscConcurrencyTest tests/OscConcurrencyTest.cpp)
     target_link_libraries(OscConcurrencyTest oscpack Threads::Threads)
     add_test(NAME OscConcurrencyTest COMMAND OscConcurrencyTest)

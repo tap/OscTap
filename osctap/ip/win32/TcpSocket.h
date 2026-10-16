@@ -156,7 +156,14 @@ namespace tap::osc {
             }
 
             void Run() {
-                break_ = false;
+                // Consume the stop request on exit rather than discarding it on entry, so a
+                // Break()/AsynchronousBreak() that lands before Run() starts is still honoured
+                // (otherwise the request is lost and Run() blocks forever -- see issue #30).
+                // A scope guard also clears the flag if Run() leaves by exception.
+                struct ClearBreakOnExit {
+                    std::atomic_bool& flag;
+                    ~ClearBreakOnExit() { flag = false; }
+                } clearBreakOnExit{break_};
                 char buf[4096];
 
                 while (!break_) {

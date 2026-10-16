@@ -286,7 +286,7 @@ namespace tap::osc {
             std::vector<std::pair<PacketListener*, UdpSocket_T*>> socketListeners_;
             std::vector<AttachedTimerListener>                    timerListeners_;
 
-            std::atomic_bool break_;
+            std::atomic_bool break_{false};
             int              breakPipe_[2]; // [0] is the reader descriptor and [1] the writer
 
             double GetCurrentTimeMs() const {
@@ -344,7 +344,14 @@ namespace tap::osc {
             }
 
             void Run() {
-                break_     = false;
+                // Consume the stop request on exit rather than discarding it on entry, so a
+                // Break()/AsynchronousBreak() that lands before Run() starts is still honoured
+                // (otherwise the request is lost and Run() blocks forever -- see issue #30).
+                // A scope guard also clears the flag if Run() leaves by exception.
+                struct ClearBreakOnExit {
+                    std::atomic_bool& flag;
+                    ~ClearBreakOnExit() { flag = false; }
+                } clearBreakOnExit{break_};
                 char* data = 0;
 
                 try {
