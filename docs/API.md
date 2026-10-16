@@ -141,6 +141,12 @@ Abstract base: `virtual void ProcessPacket(const char* data, int size, const IpE
   (224.0.0.0–239.255.255.255). Closing the socket leaves joined groups automatically.
 - `SocketReceiveMultiplexer` — multiple sockets/timers in one `Run()` loop
   (`AttachSocketListener`, `AttachPeriodicTimerListener`, …).
+- **Stopping `Run()`** (UDP and TCP alike): `Break()` from a listener/timer callback on the
+  `Run()` thread; `AsynchronousBreak()` from another thread or a signal handler. A single
+  call is enough. A break requested *before* `Run()` starts is honoured too — the next
+  `Run()` returns immediately — so "`AsynchronousBreak()` then `join()`" is race-free even
+  if the receive thread hasn't reached `Run()` yet. The stop request is consumed when
+  `Run()` returns, so a later `Run()` blocks normally.
 
 ### TCP (`ip/TcpSocket.h`)
 - `TcpTransmitSocket(const IpEndpointName& remote)` — `Send(data, size)` (length-prefixed; `TCP_NODELAY` on).

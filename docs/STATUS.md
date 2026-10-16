@@ -202,12 +202,21 @@ cmake --build build-fs --target OscFreestandingTest && ./build-fs/OscFreestandin
 - The test harness (`NewMessageBuffer`/`AllocateAligned4`) **intentionally leaks** its
   aligned scratch buffers, which is why the ASan job runs with
   `ASAN_OPTIONS=detect_leaks=0`. (Cleaning this up is a fine low-priority task.)
-- **`OscConcurrencyTest` must signal `AsynchronousBreak()` in a loop, not once.**
-  `Run()` resets its break flag at entry, so a single pre-emptive break can be lost and
-  the receive loop would block forever. The loopback packet it sends is **best-effort**
-  (receipt is not asserted — sandboxed CI may not deliver UDP). It's POSIX-only and built
-  under `-fsanitize=thread` via `-DOSCTAP_TSAN=ON` (GCC ships `libtsan`; the distro Clang
-  may lack the TSan runtime, so the CI job uses GCC).
+- **A `Break()`/`AsynchronousBreak()` requested before `Run()` starts is honoured** (#30).
+  All four receive loops (`posix`/`win32` × UDP/TCP) consume the break flag when `Run()`
+  *returns* (via a scope guard, so an exception exit clears it too) instead of resetting it
+  on entry, which used to silently drop a pre-emptive break and leave `Run()` blocked
+  forever — the common "`AsynchronousBreak()` then `join()`" shutdown could deadlock if the
+  receive thread was slow to reach `Run()`. A single `AsynchronousBreak()` is now sufficient
+  and race-free; don't reintroduce a "signal in a loop" workaround. The one visible
+  behaviour change: a break issued while nothing is running makes the *next* `Run()` return
+  immediately rather than being ignored. `tests/OscBreakBeforeRunTest.cpp` is the
+  deterministic regression test (built on every platform, including the Windows legs and
+  the win32-under-Wine job); `OscConcurrencyTest` uses the single break under TSan.
+- **`OscConcurrencyTest`'s loopback packet is best-effort** (receipt is not asserted —
+  sandboxed CI may not deliver UDP). It's POSIX-only and built under `-fsanitize=thread`
+  via `-DOSCTAP_TSAN=ON` (GCC ships `libtsan`; the distro Clang may lack the TSan
+  runtime, so the CI job uses GCC).
 - **ClusterFuzzLite builds the fuzzer via `.clusterfuzzlite/build.sh`, not CMake** —
   it compiles `fuzz/fuzz_parse.cpp` directly with the OSS-Fuzz toolchain's
   `$CXXFLAGS`/`$LIB_FUZZING_ENGINE` and `-I .` (the repo root). The `cflite_*` workflows build an
