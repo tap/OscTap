@@ -77,6 +77,13 @@ if(OSCPACK_BUILD_EXAMPLES)
     add_test(NAME Win32SocketSmoke COMMAND Win32SocketSmoke)
   endif()
 
+  # SocketReceiveMultiplexer facade: several sockets + a periodic timer in one
+  # Run() loop, attached through the public UdpSocket types. Loopback only, so it
+  # runs on every platform.
+  add_executable(OscMultiplexerTest tests/OscMultiplexerTest.cpp)
+  target_link_libraries(OscMultiplexerTest oscpack)
+  add_test(NAME OscMultiplexerTest COMMAND OscMultiplexerTest)
+
   # Regression test for issue #30: a Break()/AsynchronousBreak() requested before
   # Run() starts must make Run() return instead of being lost (which blocked the
   # receive loop forever). Deterministic and single-threaded apart from a watchdog

@@ -48,6 +48,12 @@ namespace tap::osc {
 
     namespace detail {
         template <typename Impl_T>
+        class UdpSocket;
+
+        // Runs one receive loop over any number of UDP sockets and periodic timers.
+        // Attach the public UdpSocket objects (as in oscpack); the platform
+        // implementation they wrap is reached through the friendship below.
+        template <typename Impl_T>
         class SocketReceiveMultiplexer {
             typename Impl_T::socket_multiplexer_t impl_;
 
@@ -60,11 +66,11 @@ namespace tap::osc {
             // only call the attach/detach methods _before_ calling Run
 
             // only one listener per socket, each socket at most once
-            void AttachSocketListener(udp_socket_t* socket, PacketListener* listener) {
-                impl_.AttachSocketListener(socket, listener);
+            void AttachSocketListener(UdpSocket<Impl_T>* socket, PacketListener* listener) {
+                impl_.AttachSocketListener(&socket->impl_, listener);
             }
-            void DetachSocketListener(udp_socket_t* socket, PacketListener* listener) {
-                impl_.DetachSocketListener(socket, listener);
+            void DetachSocketListener(UdpSocket<Impl_T>* socket, PacketListener* listener) {
+                impl_.DetachSocketListener(&socket->impl_, listener);
             }
 
             void AttachPeriodicTimerListener(int periodMilliseconds, TimerListener* listener) {
@@ -85,6 +91,8 @@ namespace tap::osc {
 
         template <typename Impl_T>
         class UdpSocket {
+            friend class SocketReceiveMultiplexer<Impl_T>;
+
           protected:
             typename Impl_T::udp_socket_t impl_;
 
@@ -179,10 +187,10 @@ namespace tap::osc {
             UdpListeningReceiveSocket(const IpEndpointName& localEndpoint, PacketListener* listener)
                 : listener_(listener) {
                 this->Bind(localEndpoint);
-                mux_.AttachSocketListener(&this->impl_, listener_);
+                mux_.AttachSocketListener(this, listener_);
             }
 
-            ~UdpListeningReceiveSocket() { mux_.DetachSocketListener(&this->impl_, listener_); }
+            ~UdpListeningReceiveSocket() { mux_.DetachSocketListener(this, listener_); }
 
             // see SocketReceiveMultiplexer above for the behaviour of these methods...
             void Run() { mux_.Run(); }

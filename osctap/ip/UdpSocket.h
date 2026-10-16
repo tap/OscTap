@@ -17,9 +17,11 @@ namespace tap::osc {
 #endif
     } // namespace detail
 
+    using UdpSocket                 = detail::UdpSocket<detail::Implementation>;
     using UdpTransmitSocket         = detail::UdpTransmitSocket<detail::Implementation>;
     using UdpReceiveSocket          = detail::UdpReceiveSocket<detail::Implementation>;
     using UdpListeningReceiveSocket = detail::UdpListeningReceiveSocket<detail::Implementation>;
+    using SocketReceiveMultiplexer  = detail::SocketReceiveMultiplexer<detail::Implementation>;
 } // namespace tap::osc
 
 // Backwards-compatibility aliases: the canonical namespace is tap::osc.

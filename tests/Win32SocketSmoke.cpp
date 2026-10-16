@@ -45,6 +45,14 @@ namespace {
                                              &listener);
         rx.AsynchronousBreak();
 
+        // The multiplexer facade: attach a public UdpSocket (not the implementation
+        // type), as oscpack's API always allowed.
+        osctap::UdpReceiveSocket         rx2(osctap::IpEndpointName(osctap::IpEndpointName::ANY_ADDRESS, 9002));
+        osctap::SocketReceiveMultiplexer mux;
+        mux.AttachSocketListener(&rx2, &listener);
+        mux.Run();
+        mux.DetachSocketListener(&rx2, &listener);
+
         // TCP backend (ip/win32/TcpSocket.h): client Send + connection-aware server.
         osctap::TcpTransmitSocket tcpTx(ep);
         tcpTx.Send(buf, sizeof(buf));

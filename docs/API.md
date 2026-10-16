@@ -139,8 +139,12 @@ Abstract base: `virtual void ProcessPacket(const char* data, int size, const IpE
 - **Multicast** (any UDP socket, after `Bind()`): `JoinMulticastGroup(const IpEndpointName&)`
   / `LeaveMulticastGroup(...)` — IP_ADD/DROP_MEMBERSHIP for an IPv4 group
   (224.0.0.0–239.255.255.255). Closing the socket leaves joined groups automatically.
-- `SocketReceiveMultiplexer` — multiple sockets/timers in one `Run()` loop
-  (`AttachSocketListener`, `AttachPeriodicTimerListener`, …).
+- `SocketReceiveMultiplexer` — multiple sockets and periodic timers in one `Run()` loop:
+  `AttachSocketListener(UdpSocket*, PacketListener*)` / `DetachSocketListener(...)`,
+  `AttachPeriodicTimerListener([initialDelayMs,] periodMs, TimerListener*)` /
+  `DetachPeriodicTimerListener(...)`, then `Run()`, `Break()`, `AsynchronousBreak()`.
+  Attach/detach before `Run()`. Takes the public `UdpSocket` types (`UdpReceiveSocket`
+  etc.), as in oscpack. `UdpListeningReceiveSocket` is the one-socket convenience wrapper.
 - **Stopping `Run()`** (UDP and TCP alike): `Break()` from a listener/timer callback on the
   `Run()` thread; `AsynchronousBreak()` from another thread or a signal handler. A single
   call is enough. A break requested *before* `Run()` starts is honoured too — the next
